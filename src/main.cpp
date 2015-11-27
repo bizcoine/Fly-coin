@@ -633,7 +633,7 @@ int64_t CTransaction::GetAdditionalFeeV2() const
 	{
 		CTxDestination outAddress;
 		ExtractDestination(txout.scriptPubKey, outAddress);
-		if(mapInAmounts.count(outAddress) || AdditionalFee::IsInFeeExcemptionList(outAddress) || outAddress == CTxDestination(CBitcoinAddress(ADDITIONAL_FEE_ADDRESS).Get())
+		if(mapInAmounts.count(outAddress) || AdditionalFee::IsInFeeExcemptionList(outAddress) || outAddress == CTxDestination(CBitcoinAddress(ADDITIONAL_FEE_ADDRESS).Get()))
 			continue;
 		else
 			nValueAdditionalFee += AdditionalFee::GetAdditionalFeeFromTable(txout.nValue);
