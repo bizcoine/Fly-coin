@@ -656,11 +656,9 @@ bool CTransaction::IsAdditionalFeeIncludedV2() const
 {
 	if(IsCoinStake())
 		return true;
+
 	
-	printf("Paid fee: %l\n", GetPaidFee());
-	printf("Additional fee: %l\n", GetAdditionalFeeV2());
-	
-	return (GetPaidFee() >= GetAdditionalFeeV2());
+	return (GetPaidFee() >= GetAdditionalFeeV2() || GetPaidFee() < 0);
 }
 
 bool CTxMemPool::accept(CTxDB& txdb, CTransaction &tx, bool fCheckInputs,
