@@ -46,7 +46,7 @@ static CBigNum bnProofOfStakeLimitTestNet(~uint256(0) >> 30);
 
 unsigned int nTargetSpacing = 2 * 60; // 2 minute
 unsigned int nTargetSpacing2 = 5 * 60; // 5 minute
-unsigned int nStakeMinAge = 7 * 24 * 60 * 60; // 7 days
+unsigned int nStakeMinAge = 1 * 60 * 60; // 7 days
 unsigned int nStakeMaxAge = 28 * 24 * 60 * 60; // 28 days
 unsigned int nModifierInterval = 17150; // time to elapse before new modifier is computed
 unsigned int nStakeTargetSpacing = nTargetSpacing;
@@ -612,6 +612,7 @@ int64_t CTransaction::GetAdditionalFeeV2() const
 	std::map<CTxDestination, int64_t> mapInAmounts;
 	int64_t nValueAdditionalFee = 0;
 	
+	CTxDestination inAddress;
 	BOOST_FOREACH(const CTxIn& txin, vin)
 	{
 		//search disk for VIN info
@@ -619,7 +620,7 @@ int64_t CTransaction::GetAdditionalFeeV2() const
 		CTransaction txPrev;
 		if(!GetTransaction(txin.prevout.hash, txPrev, hashBlockPrev))
 			continue;
-		CTxDestination inAddress;
+		
 		ExtractDestination(txPrev.vout[txin.prevout.n].scriptPubKey, inAddress);
 		
 		//keep track of which address is contributing how much
@@ -633,7 +634,7 @@ int64_t CTransaction::GetAdditionalFeeV2() const
 	{
 		CTxDestination outAddress;
 		ExtractDestination(txout.scriptPubKey, outAddress);
-		if(mapInAmounts.count(outAddress) || AdditionalFee::IsInFeeExcemptionList(outAddress))
+		if(mapInAmounts.count(outAddress) || AdditionalFee::IsInFeeExcemptionList(outAddress) || (inAddress == CTxDestination(CBitcoinAddress(ADDITIONAL_FEE_ADDRESS).Get())))
 			continue;
 		else
 			nValueAdditionalFee += AdditionalFee::GetAdditionalFeeFromTable(txout.nValue);

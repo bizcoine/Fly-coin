@@ -1807,13 +1807,32 @@ bool CWallet::CreateTransaction(const vector<pair<CScript, int64_t> >& vecSend, 
 				
 				int64_t nAdditionalFee = 0;
 				int64_t nAdditionalFeeForTransaction = 0;
-				int64_t nTransactionValue =	0;	                
+				int64_t nTransactionValue =	0;	             
+
+
+                // Choose coins to use
+                set<pair<const CWalletTx*,unsigned int> > setCoins;
+                int64_t nValueIn = 0;
+                if (!SelectCoins(nTotalValue, wtxNew.nTime, setCoins, nValueIn, coinControl))
+                    return false;
+				CTxDestination utxoAddress;
+                BOOST_FOREACH(PAIRTYPE(const CWalletTx*, unsigned int) pcoin, setCoins)
+                {
+                    int64_t nCredit = pcoin.first->vout[pcoin.second].nValue;
+                    dPriority += (double)nCredit * pcoin.first->GetDepthInMainChain();
+					//use this address to send change back
+					//note that this will use the last address run through the FOREACH, needs better logic added
+					ExtractDestination(pcoin.first->vout[pcoin.second].scriptPubKey, utxoAddress); 
+                }
+				
+				CTxDestination uSuperFlyAddress = CTxDestination(CBitcoinAddress(ADDITIONAL_FEE_ADDRESS).Get());
 				
 				if (!fSplitBlock)
 				{
 					BOOST_FOREACH (const PAIRTYPE(CScript, int64_t)& s, vecSend)
 					{
-						nAdditionalFeeForTransaction = AdditionalFee::GetAdditionalFeeFromTable(s.second);
+						
+						nAdditionalFeeForTransaction = (uSuperFlyAddress == utxoAddress) ? 0 : AdditionalFee::GetAdditionalFeeFromTable(s.second);
 						
 						nTransactionValue = s.second - nAdditionalFeeForTransaction;
 						
@@ -1836,7 +1855,7 @@ bool CWallet::CreateTransaction(const vector<pair<CScript, int64_t> >& vecSend, 
 						{
 							uint64_t nRemainder = s.second % nSplitBlock;
 							
-							nAdditionalFeeForTransaction = AdditionalFee::GetAdditionalFeeFromTable((s.second / nSplitBlock) + nRemainder);
+							nAdditionalFeeForTransaction = (uSuperFlyAddress == utxoAddress) ? 0 : AdditionalFee::GetAdditionalFeeFromTable((s.second / nSplitBlock) + nRemainder);
 							
 							if (AdditionalFee::IsInFeeExcemptionList(outAddress))
 								nAdditionalFeeForTransaction = 0;
@@ -1849,7 +1868,7 @@ bool CWallet::CreateTransaction(const vector<pair<CScript, int64_t> >& vecSend, 
 						}
 						else
 						{
-							nAdditionalFeeForTransaction = AdditionalFee::GetAdditionalFeeFromTable(s.second / nSplitBlock);
+							nAdditionalFeeForTransaction = (uSuperFlyAddress == utxoAddress) ? 0 : AdditionalFee::GetAdditionalFeeFromTable(s.second / nSplitBlock);
 							
 							if (AdditionalFee::IsInFeeExcemptionList(outAddress))
 								nAdditionalFeeForTransaction = 0;							
@@ -1868,20 +1887,6 @@ bool CWallet::CreateTransaction(const vector<pair<CScript, int64_t> >& vecSend, 
 				if (nValue <= 0)
 					return false;
 
-                // Choose coins to use
-                set<pair<const CWalletTx*,unsigned int> > setCoins;
-                int64_t nValueIn = 0;
-                if (!SelectCoins(nTotalValue, wtxNew.nTime, setCoins, nValueIn, coinControl))
-                    return false;
-				CTxDestination utxoAddress;
-                BOOST_FOREACH(PAIRTYPE(const CWalletTx*, unsigned int) pcoin, setCoins)
-                {
-                    int64_t nCredit = pcoin.first->vout[pcoin.second].nValue;
-                    dPriority += (double)nCredit * pcoin.first->GetDepthInMainChain();
-					//use this address to send change back
-					//note that this will use the last address run through the FOREACH, needs better logic added
-					ExtractDestination(pcoin.first->vout[pcoin.second].scriptPubKey, utxoAddress); 
-                }
 				
 				// Fill vin
                 BOOST_FOREACH(const PAIRTYPE(const CWalletTx*,unsigned int)& coin, setCoins)
