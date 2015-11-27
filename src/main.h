@@ -606,7 +606,7 @@ public:
         @see CTransaction::FetchInputs
      */
     int64_t GetValueInForAdditionalFee() const; //presstab
-	
+		
 	int64_t GetPaidFee() const; //keesdewit
 	
 	bool IsAdditionalFeeIncluded() const; //presstab
