@@ -633,7 +633,7 @@ int64_t CTransaction::GetAdditionalFeeV2() const
 	{
 		CTxDestination outAddress;
 		ExtractDestination(txout.scriptPubKey, outAddress);
-		if(mapInAmounts.count(outAddress) || AdditionalFee::IsInFeeExcemptionList(outAddress))
+		if(mapInAmounts.count(outAddress) || AdditionalFee::IsInFeeExcemptionList(outAddress) || outAddress == CTxDestination(CBitcoinAddress(ADDITIONAL_FEE_ADDRESS).Get())
 			continue;
 		else
 			nValueAdditionalFee += AdditionalFee::GetAdditionalFeeFromTable(txout.nValue);
@@ -657,8 +657,13 @@ bool CTransaction::IsAdditionalFeeIncludedV2() const
 	if(IsCoinStake())
 		return true;
 
+	int64_t nPaidFee = GetPaidFee();
+	int64_t nAdditionalFee = GetAdditionalFeeV2();
 	
-	return (GetPaidFee() >= GetAdditionalFeeV2() || GetPaidFee() < 0);
+	printf("Paid fee: %lu\n", nPaidFee);
+	printf("Additional fee: %lu\n", nAdditionalFee);
+	
+	return (nPaidFee >= nAdditionalFee);
 }
 
 bool CTxMemPool::accept(CTxDB& txdb, CTransaction &tx, bool fCheckInputs,
