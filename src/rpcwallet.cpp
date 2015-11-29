@@ -1167,7 +1167,7 @@ void ListTransactions(const CWalletTx& wtx, const string& strAccount, int nMinDe
         }
         else
         {
-            entry.push_back(Pair("category", "generate"));
+            entry.push_back(Pair("category", "savings"));
             entry.push_back(Pair("amount", ValueFromAmount(nGeneratedMature)));
         }
         if (fLong)
@@ -1213,7 +1213,7 @@ void ListTransactions(const CWalletTx& wtx, const string& strAccount, int nMinDe
                     else if (wtx.GetBlocksToMaturity() > 0)
                         entry.push_back(Pair("category", "immature"));
                     else
-                        entry.push_back(Pair("category", "generate"));
+                        entry.push_back(Pair("category", "savings"));
                 }
                 else
                 {

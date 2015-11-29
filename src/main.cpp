@@ -556,7 +556,7 @@ int64_t CTransaction::GetMinFee(unsigned int nBlockSize, enum GetMinFee_mode mod
     return nMinFee;
 }
 
-int64_t CTransaction::GetValueInForAdditionalFee() const //presstab
+int64_t CTransaction::GetValueInForAdditionalFee() const
 {
 	std::map<CTxDestination, int64_t> mapInAmounts;
 	int64_t nValueInAdditionalFee = 0;
@@ -590,7 +590,6 @@ int64_t CTransaction::GetValueInForAdditionalFee() const //presstab
 	return nValueInAdditionalFee;
 }
 
-
 int64_t CTransaction::GetPaidFee() const
 {
 	int64_t nFeePaid = 0;
@@ -610,9 +609,38 @@ int64_t CTransaction::GetAdditionalFeeV2() const
 	if(IsCoinStake())
 		return 0;
 
-	int64_t additionalFeeValue = GetValueInForAdditionalFee();
-
-	return AdditionalFee::GetAdditionalFeeFromTable(additionalFeeValue);
+	std::map<CTxDestination, int64_t> mapInAmounts;
+	int64_t nValueAdditionalFee = 0;
+	
+	CTxDestination inAddress;
+	BOOST_FOREACH(const CTxIn& txin, vin)
+	{
+		//search disk for VIN info
+		uint256 hashBlockPrev;
+		CTransaction txPrev;
+		if(!GetTransaction(txin.prevout.hash, txPrev, hashBlockPrev))
+			continue;
+		
+		ExtractDestination(txPrev.vout[txin.prevout.n].scriptPubKey, inAddress);
+		
+		//keep track of which address is contributing how much
+		if(mapInAmounts.count(inAddress))
+			mapInAmounts[inAddress] += txPrev.vout[txin.prevout.n].nValue;
+		else
+			mapInAmounts[inAddress] = txPrev.vout[txin.prevout.n].nValue;
+	}
+	
+	BOOST_FOREACH(const CTxOut txout, vout)
+	{
+		CTxDestination outAddress;
+		ExtractDestination(txout.scriptPubKey, outAddress);
+		if(mapInAmounts.count(outAddress) || AdditionalFee::IsInFeeExcemptionList(outAddress) || (inAddress == CTxDestination(CBitcoinAddress(ADDITIONAL_FEE_ADDRESS).Get())))
+			continue;
+		else
+			nValueAdditionalFee += AdditionalFee::GetAdditionalFeeFromTable(txout.nValue);
+	}
+		
+	return nValueAdditionalFee;
 }	
 bool CTransaction::IsAdditionalFeeIncluded() const
 {
@@ -630,10 +658,13 @@ bool CTransaction::IsAdditionalFeeIncludedV2() const
 	if(IsCoinStake())
 		return true;
 
-	if(GetPaidFee() >= GetAdditionalFeeV2())
-		return true;
+	int64_t nPaidFee = GetPaidFee();
+	int64_t nAdditionalFee = GetAdditionalFeeV2();
 	
-	return false;
+	printf("Paid fee: %lu\n", nPaidFee);
+	printf("Additional fee: %lu\n", nAdditionalFee);
+	
+	return (nPaidFee >= nAdditionalFee || nTime < FORK_TIME_5);
 }
 
 bool CTxMemPool::accept(CTxDB& txdb, CTransaction &tx, bool fCheckInputs,

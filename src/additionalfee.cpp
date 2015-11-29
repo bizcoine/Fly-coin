@@ -5,9 +5,7 @@
 int64_t AdditionalFee::GetAdditionalFeeFromTable(int64_t additionalValue) //keesdewit
 {
 	int64_t additionalValueInternal = additionalValue / COIN;
-	
-	printf("Additional fee value %ld \n", additionalValueInternal);
-	
+		
 	if (additionalValueInternal <= 0)
 		return 0;
 	
