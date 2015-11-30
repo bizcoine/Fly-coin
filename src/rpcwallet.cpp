@@ -11,6 +11,7 @@
 #include "init.h"
 #include "base58.h"
 #include "coincontrol.h"
+#include "additionalfee.h"
 
 #include <sstream>
 #include <boost/lexical_cast.hpp>
@@ -1494,6 +1495,20 @@ Value getconfs(const Array& params, bool fHelp)
 	
 	else return "failed";
 }
+
+Value gettxfee(const Array& params, bool fHelp)
+{
+    if (fHelp || params.size() != 1)
+        throw runtime_error(
+            "gettxfee <amount>\n"
+            "Get the transaction fee for <amount>");
+			
+	int64_t nAmount = AmountFromValue(params[0]);
+
+	double nFee = AdditionalFee::GetAdditionalFeeFromTable(nAmount) / (double)COIN;
+	
+	return nFee;
+}			
 
 Value gettransaction(const Array& params, bool fHelp)
 {
