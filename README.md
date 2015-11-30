@@ -1,6 +1,6 @@
 <h1>FlyCoin</h1>
 <h4><i>Come fly with Vegasguy</i></h4>
-<img src="http://s22.postimg.org/v24skn2hd/fly_coin.jpg" />
+<img src="http://www.bitcoinlasvegas.net/files/flycoin-banner.jpg" />
 
 | Specification  | Details |
 | ------------- | ------------- |
