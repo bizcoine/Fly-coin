@@ -2496,7 +2496,11 @@ string CWallet::SendMoneyToDestination(const CTxDestination& address, int64_t nV
     if (nValue <= 0)
         return _("Invalid amount");
     if (nValue + nTransactionFee > GetBalance())
+	{
+		printf("SendMoneyToDestination value: %lu\n", (nValue + nTransactionFee));
+		printf("SendMoneyToDestination balance: %lu\n", GetBalance());
         return _("Insufficient funds");
+	}
 
     // Parse Bitcoin address
     CScript scriptPubKey;
