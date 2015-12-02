@@ -1220,19 +1220,18 @@ void ListTransactions(const CWalletTx& wtx, const string& strAccount, int nMinDe
                 {
                     entry.push_back(Pair("category", "receive"));
                 }
-                if (!wtx.IsCoinStake())
-                    entry.push_back(Pair("amount", ValueFromAmount(r.second)));
-                else
-                {
-                    entry.push_back(Pair("amount", ValueFromAmount(-nFee)));
-                    stop = true; // only one coinstake output
-                }
+				
+				entry.push_back(Pair("amount", ValueFromAmount(r.second)));
+				
+                stop = wtx.IsCoinStake();
+                    
                 if (fLong)
                     WalletTxToJSON(wtx, entry);
+				
                 ret.push_back(entry);
             }
             if (stop)
-                break;
+				break;
         }
     }
 }
