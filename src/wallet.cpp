@@ -1255,7 +1255,7 @@ bool CWallet::MultiSend()
 				COutPoint outpt(txhash, out.i);
 				cControl->Select(outpt);	
 				CWalletTx wtx;
-				cControl->fReturnChange = true;
+				cControl->fReturnChange = GetBoolArg("-returnchange", true);
 				CReserveKey keyChange(this); // this change address does not end up being used, because change is returned with coin control switch
 				int64_t nFeeRet = 0;
 				vector<pair<CScript, int64_t> > vecSend;
