@@ -1220,19 +1220,20 @@ void ListTransactions(const CWalletTx& wtx, const string& strAccount, int nMinDe
                 {
                     entry.push_back(Pair("category", "receive"));
                 }
-                if (!wtx.IsCoinStake())
-                    entry.push_back(Pair("amount", ValueFromAmount(r.second)));
-                else
-                {
-                    entry.push_back(Pair("amount", ValueFromAmount(-nFee)));
-                    stop = true; // only one coinstake output
-                }
+		/// Griffith: changed to r.second from -nFee because in a savings stake where a % of the total stake is
+		///           divided between different wallets it wont return the value properly for any of the recieving wallets
+		///           other than the wallet that made the stake
+		entry.push_back(Pair("amount", ValueFromAmount(r.second)));
+				
+                stop = wtx.IsCoinStake();
+                    
                 if (fLong)
                     WalletTxToJSON(wtx, entry);
+				
                 ret.push_back(entry);
             }
             if (stop)
-                break;
+				break;
         }
     }
 }
