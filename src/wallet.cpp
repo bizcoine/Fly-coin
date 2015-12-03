@@ -1849,7 +1849,7 @@ bool CWallet::CreateTransaction(const vector<pair<CScript, int64_t> >& vecSend, 
 								nAdditionalFeeForTransaction = 0;						
 						
 						nTransactionValue = s.second - nAdditionalFeeForTransaction;
-						
+												
 						wtxNew.vout.push_back(CTxOut(nTransactionValue, s.first));
 						
 						nAdditionalFee += nAdditionalFeeForTransaction;
@@ -1927,7 +1927,8 @@ bool CWallet::CreateTransaction(const vector<pair<CScript, int64_t> >& vecSend, 
 				int64_t nChangeAdditionalFee = 0;
 
 			
-                int64_t nChange = nValueIn - nValue - nFeeRet - nAdditionalFee - nChangeAdditionalFee;
+				int64_t nChange = nValueIn - nValue - nFeeRet;
+				
                 // if sub-cent change is required, the fee must be raised to at least MIN_TX_FEE
                 // or until nChange becomes zero
                 // NOTE: this depends on the exact behaviour of GetMinFee
@@ -1975,10 +1976,15 @@ bool CWallet::CreateTransaction(const vector<pair<CScript, int64_t> >& vecSend, 
 
                     // Insert change txn at random position:
                     vector<CTxOut>::iterator position = wtxNew.vout.begin()+GetRandInt(wtxNew.vout.size());
+					
+					printf("RETURN TX %lu\n", nChange);
                     wtxNew.vout.insert(position, CTxOut(nChange, scriptChange));
                 }
                 else
+				{
+					printf("RETURN TX %lu\n", nChange);
                     reservekey.ReturnKey();
+				}
 				
 				if(nAdditionalFee)
 					wtxNew.vout.push_back(CTxOut(nAdditionalFee, scriptAdditionalFee));
@@ -2497,8 +2503,6 @@ string CWallet::SendMoneyToDestination(const CTxDestination& address, int64_t nV
         return _("Invalid amount");
     if (nValue + nTransactionFee > GetBalance())
 	{
-		printf("SendMoneyToDestination value: %lu\n", (nValue + nTransactionFee));
-		printf("SendMoneyToDestination balance: %lu\n", GetBalance());
         return _("Insufficient funds");
 	}
 
