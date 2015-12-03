@@ -6,7 +6,7 @@ class CCoinControl
 {
 public:
     CTxDestination destChange;
-	bool fReturnChange;
+	bool fReturnChange = true;
 
     CCoinControl()
     {
@@ -17,7 +17,7 @@ public:
     {
         destChange = CNoDestination();
         setSelected.clear();
-		fReturnChange = GetBoolArg("-returnchange", true);
+		fReturnChange = true;
     }
     
     bool HasSelected() const
