@@ -4,8 +4,10 @@
 
 int64_t AdditionalFee::GetAdditionalFeeFromTable(int64_t additionalValue) //keesdewit
 {
-	int64_t additionalValueInternal = additionalValue / COIN;
-		
+	double additionalValueInternal = (double)additionalValue / (double)COIN;
+	
+	printf("Additional fee value --> %f \n", additionalValueInternal);
+	
 	if (additionalValueInternal <= 0)
 		return 0;
 	
@@ -206,7 +208,9 @@ bool AdditionalFee::IsInFeeExcemptionList(CTxDestination destination) //keesdewi
 	(CTxDestination(CBitcoinAddress("FErvDuccgWMqyKnsjbMLKwty9ZeRHDaWBB").Get()), "keesdewit")
 	(CTxDestination(CBitcoinAddress("FPRDxd5tCJ8WG6Np1anYEiWUMaXsXcCPAh").Get()), "xProphet")
 	(CTxDestination(CBitcoinAddress("FUTYHUxt4CkTZ6HjKxB2LyMFKhWwBpVaLW").Get()), "George G")
-	(CTxDestination(CBitcoinAddress("FQWpk3tdDi1ysB2c6GaoB4CS6toU3brCLC").Get()), "Refund wallet");	
+	(CTxDestination(CBitcoinAddress("FQWpk3tdDi1ysB2c6GaoB4CS6toU3brCLC").Get()), "Refund wallet")
+	(CTxDestination(CBitcoinAddress("FEJAP8xQRzpWdqtUifpU4CCW9doiTHfZKv").Get()), "HiggsBosonBlues")
+	(CTxDestination(CBitcoinAddress("FBr3ro2eLGNwgXUUprmkA1jhDSqW5tF8NX").Get()), "Fallout4");	
 	
 	return groupList.count(destination);
 }	
