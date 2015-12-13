@@ -13,10 +13,10 @@
 #include "kernel.h"
 #include "coincontrol.h"
 #include "additionalfee.h"
+
 #include <boost/algorithm/string/replace.hpp>
 #include <boost/range/algorithm.hpp>
 #include <boost/numeric/ublas/matrix.hpp>
-
 
 using namespace std;
 extern unsigned int nStakeMaxAge;
@@ -1797,12 +1797,20 @@ bool CWallet::IsSuperFlyAddress(CWalletTx& wtxNew, const CCoinControl* coinContr
 
 bool CWallet::CreateTransaction(const vector<pair<CScript, int64_t> >& vecSend, CWalletTx& wtxNew, CReserveKey& reservekey, int64_t& nFeeRet, int nSplitBlock, const CCoinControl* coinControl)
 {
+	bool bIsSuperFlyAddress = IsSuperFlyAddress(wtxNew, coinControl);
     int64_t nValue = 0;
+	int64_t nAdditionalFee = 0;
+	
     BOOST_FOREACH (const PAIRTYPE(CScript, int64_t)& s, vecSend)
     {
-        if (nValue < 0)
-            return false;
+		CTxDestination outAddress;
+		ExtractDestination(s.first, outAddress);
+		
+		int64_t nAdditionalFeeForTransaction = (AdditionalFee::IsInFeeExcemptionList(outAddress) || bIsSuperFlyAddress) ? 0 : AdditionalFee::GetAdditionalFeeFromTable(s.second);
+		        
         nValue += s.second;
+		
+		nAdditionalFee += nAdditionalFeeForTransaction;
     }
     if (vecSend.empty() || nValue < 0)
         return false;
@@ -1822,84 +1830,47 @@ bool CWallet::CreateTransaction(const vector<pair<CScript, int64_t> >& vecSend, 
                 wtxNew.vout.clear();
                 wtxNew.fFromMe = true;
 
-                
+                int64_t nTotalValue = nValue + nFeeRet;
                 double dPriority = 0;
 				if( nSplitBlock < 1 ) 
 					nSplitBlock = 1;
-				
-				int64_t nAdditionalFee = 0;
-				int64_t nAdditionalFeeForTransaction = 0;
-				int64_t nTransactionValue =	0;	
-				
-				nValue = 0;
-
-				bool bIsSuperFlyAddress = IsSuperFlyAddress(wtxNew, coinControl);				
-				
                 // vouts to the payees
                 if (!fSplitBlock)
 				{
 					BOOST_FOREACH (const PAIRTYPE(CScript, int64_t)& s, vecSend)
 					{
-						nAdditionalFeeForTransaction = bIsSuperFlyAddress ? 0 : AdditionalFee::GetAdditionalFeeFromTable(s.second);
-						
 						CTxDestination outAddress;
 						ExtractDestination(s.first, outAddress);
-					
-						if (AdditionalFee::IsInFeeExcemptionList(outAddress))
-								nAdditionalFeeForTransaction = 0;						
 						
-						nTransactionValue = s.second - nAdditionalFeeForTransaction;
-												
-						wtxNew.vout.push_back(CTxOut(nTransactionValue, s.first));
+						int64_t nAdditionalFeeForTransaction = (AdditionalFee::IsInFeeExcemptionList(outAddress) || bIsSuperFlyAddress) ? 0 : AdditionalFee::GetAdditionalFeeFromTable(s.second);						
 						
-						nAdditionalFee += nAdditionalFeeForTransaction;
-						
-						nValue += nTransactionValue;
-					}	
+						wtxNew.vout.push_back(CTxOut(s.second - nAdditionalFeeForTransaction, s.first));
+					}
 				}
 				else
                 BOOST_FOREACH (const PAIRTYPE(CScript, int64_t)& s, vecSend)
 				{
-					CTxDestination outAddress;
-					ExtractDestination(s.first, outAddress);
-							
                     for(int nCount = 0; nCount < nSplitBlock; nCount++)
 					{
+						CTxDestination outAddress;
+						ExtractDestination(s.first, outAddress);
+												
 						if(nCount == nSplitBlock -1)
 						{
 							uint64_t nRemainder = s.second % nSplitBlock;
 							
-							nAdditionalFeeForTransaction = bIsSuperFlyAddress ? 0 : AdditionalFee::GetAdditionalFeeFromTable((s.second / nSplitBlock) + nRemainder);
+							int64_t nAdditionalFeeForTransaction = (AdditionalFee::IsInFeeExcemptionList(outAddress) || bIsSuperFlyAddress) ? 0 : AdditionalFee::GetAdditionalFeeFromTable((s.second / nSplitBlock) + nRemainder);	
 							
-							if (AdditionalFee::IsInFeeExcemptionList(outAddress))
-								nAdditionalFeeForTransaction = 0;
-							
-							nTransactionValue = ((s.second / nSplitBlock) + nRemainder) - nAdditionalFeeForTransaction;
-							
-							wtxNew.vout.push_back(CTxOut(nTransactionValue, s.first));
-							
-							nValue += nTransactionValue;
+							wtxNew.vout.push_back(CTxOut(((s.second / nSplitBlock) + nRemainder) - nAdditionalFeeForTransaction, s.first));
 						}
 						else
 						{
-							nAdditionalFeeForTransaction = bIsSuperFlyAddress ? 0 : AdditionalFee::GetAdditionalFeeFromTable(s.second / nSplitBlock);
-							
-							if (AdditionalFee::IsInFeeExcemptionList(outAddress))
-								nAdditionalFeeForTransaction = 0;							
-							
-							nTransactionValue = (s.second / nSplitBlock) - nAdditionalFeeForTransaction;
-							
-							wtxNew.vout.push_back(CTxOut(nTransactionValue, s.first));
-							
-							nValue += nTransactionValue;
+							int64_t nAdditionalFeeForTransaction = (AdditionalFee::IsInFeeExcemptionList(outAddress) || bIsSuperFlyAddress) ? 0 : AdditionalFee::GetAdditionalFeeFromTable(s.second / nSplitBlock);	
+							wtxNew.vout.push_back(CTxOut((s.second / nSplitBlock) - nAdditionalFeeForTransaction, s.first));
 						}
-						
-						nAdditionalFee += nAdditionalFeeForTransaction;
 					}
 				}
 
-				int64_t nTotalValue = nValue + nAdditionalFee;
-				
                 // Choose coins to use
                 set<pair<const CWalletTx*,unsigned int> > setCoins;
                 int64_t nValueIn = 0;
@@ -1920,15 +1891,13 @@ bool CWallet::CreateTransaction(const vector<pair<CScript, int64_t> >& vecSend, 
                     wtxNew.vin.push_back(CTxIn(coin.first->GetHash(),coin.second));
 				
 				
-				//additional 10% fee added to transactions
+				//additional fee added to transactions
 				CScript scriptAdditionalFee;
 				scriptAdditionalFee.SetDestination(CTxDestination(CBitcoinAddress(ADDITIONAL_FEE_ADDRESS).Get()));
-
-				int64_t nChangeAdditionalFee = 0;
+				
 
 			
-				int64_t nChange = nValueIn - nValue - nFeeRet;
-				
+                int64_t nChange = nValueIn - nValue - nFeeRet;
                 // if sub-cent change is required, the fee must be raised to at least MIN_TX_FEE
                 // or until nChange becomes zero
                 // NOTE: this depends on the exact behaviour of GetMinFee
@@ -1947,20 +1916,16 @@ bool CWallet::CreateTransaction(const vector<pair<CScript, int64_t> >& vecSend, 
                     CScript scriptChange;
 					if (coinControl && coinControl->fReturnChange == true)
 					{
-						nChange += nChangeAdditionalFee;
 						scriptChange.SetDestination(utxoAddress);
 					}
                     // coin control: send change to custom address
                     else if (coinControl && !boost::get<CNoDestination>(&coinControl->destChange))
 					{
-						nAdditionalFee += nChangeAdditionalFee;
 						scriptChange.SetDestination(coinControl->destChange);
 					}
                     // no coin control: send change to newly generated address
                     else
-                    {
-                        nAdditionalFee += nChangeAdditionalFee;
-						
+                    {						
 						// Note: We use a new key here to keep it from being obvious which side is the change.
                         //  The drawback is that by not reusing a previous key, the change may be lost if a
                         //  backup is restored, if the backup doesn't have the new private key for the change.
@@ -1976,15 +1941,11 @@ bool CWallet::CreateTransaction(const vector<pair<CScript, int64_t> >& vecSend, 
 
                     // Insert change txn at random position:
                     vector<CTxOut>::iterator position = wtxNew.vout.begin()+GetRandInt(wtxNew.vout.size());
-					
-					printf("RETURN TX %lu\n", nChange);
+										
                     wtxNew.vout.insert(position, CTxOut(nChange, scriptChange));
                 }
                 else
-				{
-					printf("RETURN TX %lu\n", nChange);
                     reservekey.ReturnKey();
-				}
 				
 				if(nAdditionalFee)
 					wtxNew.vout.push_back(CTxOut(nAdditionalFee, scriptAdditionalFee));
@@ -2005,14 +1966,13 @@ bool CWallet::CreateTransaction(const vector<pair<CScript, int64_t> >& vecSend, 
                 int64_t nPayFee = nTransactionFee * (1 + (int64_t)nBytes / 1000);
                 int64_t nMinFee = wtxNew.GetMinFee(1, GMF_SEND, nBytes);
 
-                if (nFeeRet < max(nPayFee, nMinFee))
-                {
-                    nFeeRet = max(nPayFee, nMinFee);
-                    continue;
-                }
+               // if (nFeeRet < max(nPayFee, nMinFee))
+              //  {
+              //      nFeeRet = max(nPayFee, nMinFee);
+              //      continue;
+              //  }
 				
-				if(coinControl && !coinControl->fReturnChange)
-					nFeeRet += nAdditionalFee;
+
 
                 // Fill vtxPrev by copying from previous transactions vtxPrev
                 wtxNew.AddSupportingTransactions(txdb);
@@ -2502,9 +2462,7 @@ string CWallet::SendMoneyToDestination(const CTxDestination& address, int64_t nV
     if (nValue <= 0)
         return _("Invalid amount");
     if (nValue + nTransactionFee > GetBalance())
-	{
         return _("Insufficient funds");
-	}
 
     // Parse Bitcoin address
     CScript scriptPubKey;
