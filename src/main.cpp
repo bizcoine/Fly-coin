@@ -604,7 +604,13 @@ int64_t CTransaction::GetPaidFee() const
 	
 	return nFeePaid;
 }
+
 int64_t CTransaction::GetAdditionalFeeV2() const
+{
+	return ((pindexBest->nHeight < FORK_HEIGHT_6) || GetAdditionalFeeV3());
+}
+
+int64_t CTransaction::GetAdditionalFeeV3() const
 {
 	if(IsCoinStake())
         return 0;
@@ -650,14 +656,10 @@ bool CTransaction::IsAdditionalFeeIncludedV2() const
 	if(IsCoinStake())
 		return true;
 
-    // otherwise it doesn't sync...
-    if(pindexBest->nHeight < 40135 )
-        return true;
-
 	int64_t nPaidFee = GetPaidFee();
 	int64_t nAdditionalFee = GetAdditionalFeeV2();
 	
-    return (nPaidFee >= nAdditionalFee || nTime < FORK_TIME_5);
+    return (nPaidFee >= nAdditionalFee || pindexBest->nHeight < FORK_HEIGHT_6);
 }
 
 bool CTxMemPool::accept(CTxDB& txdb, CTransaction &tx, bool fCheckInputs,

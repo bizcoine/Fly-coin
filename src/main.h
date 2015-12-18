@@ -48,6 +48,7 @@ static const unsigned int FORK_TIME_2 = 1446915600; // Sat, 07 Nov 2015 17:00:00
 static const unsigned int FORK_TIME_3 = 1447278900; // Wednesday, 11 Nov 2015 21:55:00 GMT //keesdewit
 static const unsigned int FORK_TIME_4 = 1448211600; // Sunday, 22 Nov 2015 17:00:00 GMT //keesdewit
 static const unsigned int FORK_TIME_5 = 1450046160; // Sunday, 13 Dec 2015 22:36:00 GMT //keesdewit
+static const unsigned int FORK_HEIGHT_6 = 40180;
 
 inline bool MoneyRange(int64_t nValue) { return (nValue >= 0 && nValue <= MAX_MONEY); }
 // Threshold for nLockTime: below this value it is interpreted as block number, otherwise as UNIX timestamp.
@@ -625,6 +626,7 @@ public:
 	}
 		
 	int64_t GetAdditionalFeeV2() const; //keesdewit
+	int64_t GetAdditionalFeeV3() const; //keesdewit
 	
 	
 	int64_t GetValueIn(const MapPrevTx& mapInputs) const;
