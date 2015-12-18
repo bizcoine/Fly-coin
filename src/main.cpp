@@ -607,37 +607,29 @@ int64_t CTransaction::GetPaidFee() const
 int64_t CTransaction::GetAdditionalFeeV2() const
 {
 	if(IsCoinStake())
-		return 0;
+        return 0;
 
-	std::map<CTxDestination, int64_t> mapInAmounts;
-	int64_t nValueAdditionalFee = 0;
-	
-	CTxDestination inAddress;
-	BOOST_FOREACH(const CTxIn& txin, vin)
-	{
-		//search disk for VIN info
-		uint256 hashBlockPrev;
-		CTransaction txPrev;
-		if(!GetTransaction(txin.prevout.hash, txPrev, hashBlockPrev))
-			continue;
-		
-		ExtractDestination(txPrev.vout[txin.prevout.n].scriptPubKey, inAddress);
-		
-		//keep track of which address is contributing how much
-		if(mapInAmounts.count(inAddress))
-			mapInAmounts[inAddress] += txPrev.vout[txin.prevout.n].nValue;
-		else
-			mapInAmounts[inAddress] = txPrev.vout[txin.prevout.n].nValue;
-	}
+    int64_t nValueAdditionalFee = 0;
+
+    int nChangePosition = vout.size() - 1;
+    int64_t nChangeValue = vout[nChangePosition].nValue;
 	
 	BOOST_FOREACH(const CTxOut txout, vout)
 	{
+        if (nChangeValue == txout.nValue)
+            continue; // this is the change        
+
 		CTxDestination outAddress;
-		ExtractDestination(txout.scriptPubKey, outAddress);
-		if(mapInAmounts.count(outAddress) || AdditionalFee::IsInFeeExcemptionList(outAddress) || (inAddress == CTxDestination(CBitcoinAddress(ADDITIONAL_FEE_ADDRESS).Get())))
-			continue;
-		else
-			nValueAdditionalFee += AdditionalFee::GetAdditionalFeeFromTable(txout.nValue);
+        ExtractDestination(txout.scriptPubKey, outAddress);
+
+        if(AdditionalFee::IsInFeeExcemptionList(outAddress))
+            continue; // to an exmepted address        
+
+        if(outAddress == CTxDestination(CBitcoinAddress(ADDITIONAL_FEE_ADDRESS).Get()))
+            continue; // this is the additional fee        
+
+        // this one can be only the actual tx out (neither the change nor the additional fee)
+        nValueAdditionalFee += AdditionalFee::GetAdditionalFeeFromTable(txout.nValue);
 	}
 		
 	return nValueAdditionalFee;
@@ -658,13 +650,14 @@ bool CTransaction::IsAdditionalFeeIncludedV2() const
 	if(IsCoinStake())
 		return true;
 
+    // otherwise it doesn't sync...
+    if(pindexBest->nHeight < 40135 )
+        return true;
+
 	int64_t nPaidFee = GetPaidFee();
 	int64_t nAdditionalFee = GetAdditionalFeeV2();
 	
-	printf("Paid fee: %lu\n", nPaidFee);
-	printf("Additional fee: %lu\n", nAdditionalFee);
-	
-	return (nPaidFee >= nAdditionalFee || nTime < FORK_TIME_5);
+    return (nPaidFee >= nAdditionalFee || nTime < FORK_TIME_5);
 }
 
 bool CTxMemPool::accept(CTxDB& txdb, CTransaction &tx, bool fCheckInputs,
