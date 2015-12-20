@@ -1837,7 +1837,7 @@ bool CWallet::CreateTransaction(const vector<pair<CScript, int64_t> >& vecSend, 
 
             int64_t nAdditionalFeeForTransaction = 0;
 
-            for(int nCount = 0; nCount < nSplitBlock; nCount++)
+			for(int nCount = 0; nCount < nSplitBlock; nCount++)
             {
                 if(nCount == nSplitBlock -1)
                 {
@@ -1849,6 +1849,7 @@ bool CWallet::CreateTransaction(const vector<pair<CScript, int64_t> >& vecSend, 
                         nAdditionalFeeForTransaction = 0;
 
                     nValue += (((s.second / nSplitBlock) + nRemainder) - nAdditionalFeeForTransaction);
+                    nAlterValue.push_back(make_pair(s.first, (((s.second / nSplitBlock) + nRemainder) - nAdditionalFeeForTransaction)));
                 }
                 else
                 {
@@ -1858,9 +1859,9 @@ bool CWallet::CreateTransaction(const vector<pair<CScript, int64_t> >& vecSend, 
                         nAdditionalFeeForTransaction = 0;
 
                     nValue += (s.second / nSplitBlock) - nAdditionalFeeForTransaction;
+                    nAlterValue.push_back(make_pair(s.first, (s.second / nSplitBlock) - nAdditionalFeeForTransaction));
                 }
 
-                nAlterValue.push_back(make_pair(s.first, (s.second - nAdditionalFeeForTransaction)));
                 nAdditionalFee += nAdditionalFeeForTransaction;
             }
         }
