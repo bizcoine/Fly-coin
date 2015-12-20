@@ -293,6 +293,8 @@ std::string HelpMessage()
         "  -rpcconnect=<ip>       " + _("Send commands to node running on <ip> (default: 127.0.0.1)") + "\n" +
         "  -blocknotify=<cmd>     " + _("Execute command when the best block changes (%s in cmd is replaced by block hash)") + "\n" +
         "  -walletnotify=<cmd>    " + _("Execute command when a wallet transaction changes (%s in cmd is replaced by TxID)") + "\n" +
+		"  -zapwallettxes=<mode>  " + _("Delete all wallet transactions and only recover those parts of the blockchain through -rescan on startup") + "\n" +
+		"                         " + _("(default: 1, 1 = keep tx meta data e.g. account owner and payment request information, 2 = drop tx meta data)") + "\n" +		
         "  -confchange            " + _("Require a confirmations for change (default: 0)") + "\n" +
         "  -enforcecanonical      " + _("Enforce transaction scripts to use canonical PUSH operators (default: 1)") + "\n" +
         "  -minimizecoinage       " + _("Minimize weight consumption (experimental) (default: 0)") + "\n" +
@@ -426,6 +428,10 @@ bool AppInit2()
         SoftSetBoolArg("-rescan", true);
     }
 
+	if (GetBoolArg("-zapwallettxes", false)) {
+        if (SoftSetBoolArg("-rescan", true))
+            printf("AppInit2 : parameter interaction: -zapwallettxes=<mode> -> setting -rescan=1\n");
+    }
     // ********************************************************* Step 3: parameter-to-internal-flags
 
     fDebug = GetBoolArg("-debug");
@@ -770,6 +776,21 @@ bool AppInit2()
 
     // ********************************************************* Step 8: load wallet
 
+    std::vector<CWalletTx> vWtx;
+
+	if (GetBoolArg("-zapwallettxes", false)) {
+	   uiInterface.InitMessage(_("Zapping all transactions from wallet..."));
+
+	   pwalletMain = new CWallet("wallet.dat");
+	   DBErrors nZapWalletRet = pwalletMain->ZapWalletTx(vWtx);
+	   if (nZapWalletRet != DB_LOAD_OK) {
+		   uiInterface.InitMessage(_("Error loading wallet.dat: Wallet corrupted"));
+		   return false;
+	   }
+
+	   delete pwalletMain;
+	   pwalletMain = NULL;
+	}	
     uiInterface.InitMessage(_("Loading wallet..."));
     printf("Loading wallet...\n");
     nStart = GetTimeMillis();
@@ -849,7 +870,31 @@ bool AppInit2()
         nStart = GetTimeMillis();
         pwalletMain->ScanForWalletTransactions(pindexRescan, true);
         printf(" rescan      %15"PRId64"ms\n", GetTimeMillis() - nStart);
+
+		 if (GetBoolArg("-zapwallettxes", false) && GetArg("-zapwallettxes", "1") != "2")
+		 {
+			 BOOST_FOREACH(const CWalletTx& wtxOld, vWtx)
+			 {
+				 uint256 hash = wtxOld.GetHash();
+				 std::map<uint256, CWalletTx>::iterator mi = pwalletMain->mapWallet.find(hash);
+				 if (mi != pwalletMain->mapWallet.end())
+				 {
+					 const CWalletTx* copyFrom = &wtxOld;
+					 CWalletTx* copyTo = &mi->second;
+					 copyTo->mapValue = copyFrom->mapValue;
+					 copyTo->vOrderForm = copyFrom->vOrderForm;
+					 copyTo->nTimeReceived = copyFrom->nTimeReceived;
+					 copyTo->nTimeSmart = copyFrom->nTimeSmart;
+					 copyTo->fFromMe = copyFrom->fFromMe;
+					 copyTo->strFromAccount = copyFrom->strFromAccount;
+					 copyTo->nOrderPos = copyFrom->nOrderPos;
+					 copyTo->WriteToDisk();
+				 }
+			 }
+		 }		
     }
+	
+	
 
     // ********************************************************* Step 9: import blocks
 
