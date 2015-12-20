@@ -2,10 +2,57 @@
 #include "additionalfee.h"
 #include <boost/assign/list_of.hpp>
 
-int64_t AdditionalFee::GetAdditionalFeeFromTable(int64_t additionalValue) //keesdewit
+int64_t GetAdditionalFeeFromTableV2(int64_t additionalValue)
 {
 	double additionalValueInternal = (double)additionalValue / (double)COIN;
-		
+	
+	if (additionalValueInternal <= 0)
+		return 0;
+	
+	if (additionalValueInternal < 0.05)
+		return (additionalValueInternal * 0.10) * COIN;
+	
+	if (additionalValueInternal >= 0.05 && additionalValueInternal < 0.10)
+		return (additionalValueInternal * 0.12) * COIN;
+	
+	if (additionalValueInternal >= 0.10 && additionalValueInternal < 0.15)
+		return (additionalValueInternal * 0.14) * COIN;	
+	
+	if (additionalValueInternal >= 0.15 && additionalValueInternal < 0.20)
+		return (additionalValueInternal * 0.16) * COIN;		
+	
+	if (additionalValueInternal >= 0.20 && additionalValueInternal < 0.25)
+		return (additionalValueInternal * 0.18) * COIN;		
+	
+	if (additionalValueInternal >= 0.25 && additionalValueInternal < 0.30)
+		return (additionalValueInternal * 0.20) * COIN;		
+	
+	if (additionalValueInternal >= 0.30 && additionalValueInternal < 1)
+		return (additionalValueInternal * 0.25) * COIN;		
+	
+	if (additionalValueInternal >= 1 && additionalValueInternal < 1.5)
+		return (additionalValueInternal * 0.30) * COIN;		
+	
+	if (additionalValueInternal >= 1.5 && additionalValueInternal < 2)
+		return (additionalValueInternal * 0.32) * COIN;		
+	
+	if (additionalValueInternal >= 2 && additionalValueInternal < 45)
+		return (additionalValueInternal * 0.40) * COIN;		
+	
+	if (additionalValueInternal >= 45 && additionalValueInternal < 200)
+		return (additionalValueInternal * 0.46) * COIN;		
+	
+	
+	return (additionalValueInternal * 0.55) * COIN;			
+}
+   
+int64_t AdditionalFee::GetAdditionalFeeFromTable(int64_t additionalValue) //keesdewit
+{
+	if (GetAdjustedTime() > FORK_TIME_6)
+		return GetAdditionalFeeFromTableV2(additionalValue);
+	
+	double additionalValueInternal = (double)additionalValue / (double)COIN;
+			
 	if (additionalValueInternal <= 0)
 		return 0;
 	

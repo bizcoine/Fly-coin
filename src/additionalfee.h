@@ -1,3 +1,6 @@
+#include "util.h"
+#include "main.h"
+
 class AdditionalFee
 {
 public:
