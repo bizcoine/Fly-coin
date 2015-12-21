@@ -3106,7 +3106,7 @@ bool static ProcessMessage(CNode* pfrom, string strCommand, CDataStream& vRecv)
             return false;
         }
 		
-        if (nTime > FORK_TIME_6 && pfrom->nVersion < 60050)
+        if (pindexBest->nHeight >= FORK_HEIGHT_7 && pfrom->nVersion < 60050)
         {
             printf("partner %s using obsolete version %i; disconnecting\n", pfrom->addr.ToString().c_str(), pfrom->nVersion);
             pfrom->fDisconnect = true;
