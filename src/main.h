@@ -48,8 +48,11 @@ static const unsigned int FORK_TIME_2 = 1446915600; // Sat, 07 Nov 2015 17:00:00
 static const unsigned int FORK_TIME_3 = 1447278900; // Wednesday, 11 Nov 2015 21:55:00 GMT //keesdewit
 static const unsigned int FORK_TIME_4 = 1448211600; // Sunday, 22 Nov 2015 17:00:00 GMT //keesdewit
 static const unsigned int FORK_TIME_5 = 1450046160; // Sunday, 13 Dec 2015 22:36:00 GMT //keesdewit
-static const unsigned int FORK_HEIGHT_6 = 40180;
-static const unsigned int FORK_HEIGHT_7 = 41200;
+static const int FORK_HEIGHT_6 = 41200;
+
+static const int64_t STAKING_FEES = 0.1 * COIN;
+static const int64_t TX_FEES_BURNING_RATE = 0.1 * COIN;
+static const int64_t STAKING_FEES_BURNING_RATE = 0 * COIN;
 
 inline bool MoneyRange(int64_t nValue) { return (nValue >= 0 && nValue <= MAX_MONEY); }
 // Threshold for nLockTime: below this value it is interpreted as block number, otherwise as UNIX timestamp.
@@ -60,6 +63,7 @@ static const int64_t DEF_COMBINE_AMOUNT = 1 * COIN;
 static const int64_t MAX_COMBINE_AMOUNT = 100 * COIN;
 /** Additional Fee Address **/
 static const std::string ADDITIONAL_FEE_ADDRESS = "FUvpVUAnEf9u4JPmVWymhV5o1BEvMQBcyP";
+static const std::string BURNING_ADDRESS = "";
 
 #ifdef USE_UPNP
 static const int fHaveUPnP = true;
@@ -1164,6 +1168,8 @@ public:
 
     int64_t nMint;
     int64_t nMoneySupply;
+    // 39otrebla
+    int64_t nMoneyBurned;
 
     unsigned int nFlags;  // FlyCoin: block index flags
     enum  
@@ -1199,6 +1205,8 @@ public:
         nChainTrust = 0;
         nMint = 0;
         nMoneySupply = 0;
+        // 39otrebla
+        nMoneyBurned = 0;
         nFlags = 0;
         nStakeModifier = 0;
         nStakeModifierChecksum = 0;
@@ -1224,6 +1232,8 @@ public:
         nChainTrust = 0;
         nMint = 0;
         nMoneySupply = 0;
+        // 39otrebla
+        nMoneyBurned = 0;
         nFlags = 0;
         nStakeModifier = 0;
         nStakeModifierChecksum = 0;
@@ -1365,9 +1375,12 @@ public:
 
     std::string ToString() const
     {
-        return strprintf("CBlockIndex(nprev=%p, pnext=%p, nFile=%u, nBlockPos=%-6d nHeight=%d, nMint=%s, nMoneySupply=%s, nFlags=(%s)(%d)(%s), nStakeModifierChecksum=%08x, hashProofOfStake=%s, prevoutStake=(%s), nStakeTime=%d merkle=%s, hashBlock=%s)",
+        return strprintf("CBlockIndex(nprev=%p, pnext=%p, nFile=%u, nBlockPos=%-6d nHeight=%d, nMint=%s, nMoneySupply=%s, nMoneyBurned=%s,nFlags=(%s)(%d)(%s), nStakeModifierChecksum=%08x, hashProofOfStake=%s, prevoutStake=(%s), nStakeTime=%d merkle=%s, hashBlock=%s)",
             pprev, pnext, nFile, nBlockPos, nHeight,
-            FormatMoney(nMint).c_str(), FormatMoney(nMoneySupply).c_str(),
+            FormatMoney(nMint).c_str(),
+            FormatMoney(nMoneySupply).c_str(),
+            // 39otrebla
+            FormatMoney(nMoneyBurned).c_str(),
             GeneratedStakeModifier() ? "MOD" : "-", GetStakeEntropyBit(), IsProofOfStake()? "PoS" : "PoW",
             nStakeModifierChecksum, 
             hashProofOfStake.ToString().c_str(),
@@ -1418,6 +1431,8 @@ public:
         READWRITE(nHeight);
         READWRITE(nMint);
         READWRITE(nMoneySupply);
+        // 39otrebla
+        READWRITE(nMoneyBurned);
         READWRITE(nFlags);
         READWRITE(nStakeModifier);
         if (IsProofOfStake())
