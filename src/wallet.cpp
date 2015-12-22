@@ -1849,6 +1849,7 @@ bool CWallet::CreateTransaction(const vector<pair<CScript, int64_t> >& vecSend, 
                         nAdditionalFeeForTransaction = 0;
 
                     nValue += (((s.second / nSplitBlock) + nRemainder) - nAdditionalFeeForTransaction);
+                    nAlterValue.push_back(make_pair(s.first, (((s.second / nSplitBlock) + nRemainder) - nAdditionalFeeForTransaction)));
                 }
                 else
                 {
@@ -1858,9 +1859,9 @@ bool CWallet::CreateTransaction(const vector<pair<CScript, int64_t> >& vecSend, 
                         nAdditionalFeeForTransaction = 0;
 
                     nValue += (s.second / nSplitBlock) - nAdditionalFeeForTransaction;
+                    nAlterValue.push_back(make_pair(s.first, (s.second / nSplitBlock) - nAdditionalFeeForTransaction));
                 }
 
-                nAlterValue.push_back(make_pair(s.first, (s.second - nAdditionalFeeForTransaction)));
                 nAdditionalFee += nAdditionalFeeForTransaction;
             }
         }
@@ -2433,6 +2434,30 @@ bool CWallet::CreateCoinStake(const CKeyStore& keystore, unsigned int nBits, int
 
     // Successfully generated coinstake
     return true;
+}
+
+
+DBErrors CWallet::ZapWalletTx(std::vector<CWalletTx>& vWtx)
+{
+    if (!fFileBacked)
+        return DB_LOAD_OK;
+    DBErrors nZapWalletTxRet = CWalletDB(strWalletFile,"cr+").ZapWalletTx(this, vWtx);
+    if (nZapWalletTxRet == DB_NEED_REWRITE)
+    {
+        if (CDB::Rewrite(strWalletFile, "\x04pool"))
+        {
+            LOCK(cs_wallet);
+            setKeyPool.clear();
+            // Note: can't top-up keypool here, because wallet is locked.
+            // User will be prompted to unlock wallet the next operation
+            // the requires a new key.
+        }
+    }
+
+    if (nZapWalletTxRet != DB_LOAD_OK)
+        return nZapWalletTxRet;
+
+    return DB_LOAD_OK;
 }
 
 

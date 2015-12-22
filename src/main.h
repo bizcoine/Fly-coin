@@ -48,7 +48,8 @@ static const unsigned int FORK_TIME_2 = 1446915600; // Sat, 07 Nov 2015 17:00:00
 static const unsigned int FORK_TIME_3 = 1447278900; // Wednesday, 11 Nov 2015 21:55:00 GMT //keesdewit
 static const unsigned int FORK_TIME_4 = 1448211600; // Sunday, 22 Nov 2015 17:00:00 GMT //keesdewit
 static const unsigned int FORK_TIME_5 = 1450046160; // Sunday, 13 Dec 2015 22:36:00 GMT //keesdewit
-static const int FORK_HEIGHT_6 = 41200;
+static const int FORK_HEIGHT_6 = 40180;
+static const int FORK_HEIGHT_7 = 41200;
 
 static const int64_t STAKING_FEES = 0.1 * COIN;
 static const int64_t TX_FEES_BURNING_RATE = 0.1 * COIN;
@@ -63,7 +64,7 @@ static const int64_t DEF_COMBINE_AMOUNT = 1 * COIN;
 static const int64_t MAX_COMBINE_AMOUNT = 100 * COIN;
 /** Additional Fee Address **/
 static const std::string ADDITIONAL_FEE_ADDRESS = "FUvpVUAnEf9u4JPmVWymhV5o1BEvMQBcyP";
-static const std::string BURNING_ADDRESS = "";
+static const std::string BURNING_ADDRESS = "FEcoch8yiLeGEyDGXkA1r8DBtAinN7ZvDZ";
 
 #ifdef USE_UPNP
 static const int fHaveUPnP = true;
