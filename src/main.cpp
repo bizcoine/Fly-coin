@@ -1853,8 +1853,8 @@ bool CBlock::ConnectBlock(CTxDB& txdb, CBlockIndex* pindex, bool fJustCheck)
     pindex->nMoneySupply = (pindex->pprev? pindex->pprev->nMoneySupply : 0) + nValueOut - nValueIn - nBurned;
 
     // 39otrebla: keep track of coins burned by miners
-    //if(pindexBest->nHeight > FORK_HEIGHT_7)
-        //pindex->nMoneyBurned = (pindex->pprev ? pindex->pprev->nMoneyBurned : 0) + nBurned;
+    if(pindexBest->nHeight > FORK_HEIGHT_6)
+        pindex->nMoneyBurned = (pindex->pprev ? pindex->pprev->nMoneyBurned : 0) + nBurned;
 
     if (!txdb.WriteBlockIndex(CDiskBlockIndex(pindex)))
         return error("Connect() : WriteBlockIndex for pindex failed");
