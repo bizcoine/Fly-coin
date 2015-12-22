@@ -368,8 +368,8 @@ bool CTxDB::LoadBlockIndex()
         pindexNew->nMint          = diskindex.nMint;
         pindexNew->nMoneySupply   = diskindex.nMoneySupply;
         // 39otrebla
-        if(pindexBest->nHeight > FORK_HEIGHT_6)
-            pindexNew->nMoneyBurned   = diskindex.nMoneyBurned;
+        //if(pindexBest->nHeight > FORK_HEIGHT_7)
+            //pindexNew->nMoneyBurned   = diskindex.nMoneyBurned;
         pindexNew->nFlags         = diskindex.nFlags;
         pindexNew->nStakeModifier = diskindex.nStakeModifier;
         pindexNew->prevoutStake   = diskindex.prevoutStake;

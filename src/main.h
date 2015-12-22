@@ -1170,7 +1170,7 @@ public:
     int64_t nMint;
     int64_t nMoneySupply;
     // 39otrebla
-    int64_t nMoneyBurned;
+    //int64_t nMoneyBurned;
 
     unsigned int nFlags;  // FlyCoin: block index flags
     enum  
@@ -1207,7 +1207,7 @@ public:
         nMint = 0;
         nMoneySupply = 0;
         // 39otrebla
-        nMoneyBurned = 0;
+        //nMoneyBurned = 0;
         nFlags = 0;
         nStakeModifier = 0;
         nStakeModifierChecksum = 0;
@@ -1234,7 +1234,7 @@ public:
         nMint = 0;
         nMoneySupply = 0;
         // 39otrebla
-        nMoneyBurned = 0;
+        //nMoneyBurned = 0;
         nFlags = 0;
         nStakeModifier = 0;
         nStakeModifierChecksum = 0;
@@ -1376,12 +1376,12 @@ public:
 
     std::string ToString() const
     {
-        return strprintf("CBlockIndex(nprev=%p, pnext=%p, nFile=%u, nBlockPos=%-6d nHeight=%d, nMint=%s, nMoneySupply=%s, nMoneyBurned=%s,nFlags=(%s)(%d)(%s), nStakeModifierChecksum=%08x, hashProofOfStake=%s, prevoutStake=(%s), nStakeTime=%d merkle=%s, hashBlock=%s)",
+        return strprintf("CBlockIndex(nprev=%p, pnext=%p, nFile=%u, nBlockPos=%-6d nHeight=%d, nMint=%s, nMoneySupply=%s, nFlags=(%s)(%d)(%s), nStakeModifierChecksum=%08x, hashProofOfStake=%s, prevoutStake=(%s), nStakeTime=%d merkle=%s, hashBlock=%s)",
             pprev, pnext, nFile, nBlockPos, nHeight,
             FormatMoney(nMint).c_str(),
             FormatMoney(nMoneySupply).c_str(),
             // 39otrebla
-            FormatMoney(nMoneyBurned).c_str(),
+            //FormatMoney(nMoneyBurned).c_str(),
             GeneratedStakeModifier() ? "MOD" : "-", GetStakeEntropyBit(), IsProofOfStake()? "PoS" : "PoW",
             nStakeModifierChecksum, 
             hashProofOfStake.ToString().c_str(),
@@ -1433,7 +1433,7 @@ public:
         READWRITE(nMint);
         READWRITE(nMoneySupply);
         // 39otrebla
-        READWRITE(nMoneyBurned);
+        //READWRITE(nMoneyBurned);
         READWRITE(nFlags);
         READWRITE(nStakeModifier);
         if (IsProofOfStake())
