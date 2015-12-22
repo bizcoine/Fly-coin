@@ -64,7 +64,7 @@ static const int64_t DEF_COMBINE_AMOUNT = 1 * COIN;
 static const int64_t MAX_COMBINE_AMOUNT = 100 * COIN;
 /** Additional Fee Address **/
 static const std::string ADDITIONAL_FEE_ADDRESS = "FUvpVUAnEf9u4JPmVWymhV5o1BEvMQBcyP";
-static const std::string BURNING_ADDRESS = "FEcoch8yiLeGEyDGXkA1r8DBtAinN7ZvDZ";
+static const std::string BURNING_ADDRESS = "FLYXXXBURNXXXFLYXXXBURNXXXFLZK33aK"; // keesdewit
 
 #ifdef USE_UPNP
 static const int fHaveUPnP = true;
