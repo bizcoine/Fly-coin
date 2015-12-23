@@ -48,7 +48,7 @@ static const int FORK_HEIGHT_1 = 24036;
 static const int FORK_HEIGHT_2 = 30124;
 static const int FORK_HEIGHT_3 = 31130;
 static const int FORK_HEIGHT_4 = 33762;
-static const int FORK_HEIGHT_5 = 38970;
+static const int FORK_HEIGHT_5 = 38907;
 static const int FORK_HEIGHT_6 = 40180;
 static const int FORK_HEIGHT_7 = 42200;
 
