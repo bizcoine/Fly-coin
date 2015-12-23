@@ -513,11 +513,7 @@ bool CTransaction::CheckTransaction() const
                 return DoS(10, error("CTransaction::CheckTransaction() : prevout is null"));
     }
 	
-	// presstab - FlyCoin requires an additional fee
-	if(nTime > FORK_TIME_2 && nTime < FORK_TIME_3 && !IsAdditionalFeeIncluded())
-		return DoS(100, error("CTransaction::CheckTransaction() : additional fee is not included (V1)"));
-
-	if(nTime > FORK_TIME_4 && !IsAdditionalFeeIncludedV2())
+	if(pindexBest->nHeight > FORK_HEIGHT_4 && !IsAdditionalFeeIncludedV2())
 		return DoS(100, error("CTransaction::CheckTransaction() : additional fee is not included (V2)"));
 	
     return true;
@@ -527,7 +523,7 @@ int64_t CTransaction::GetMinFee(unsigned int nBlockSize, enum GetMinFee_mode mod
 {
     // Base fee is either MIN_TX_FEE or MIN_RELAY_TX_FEE
     int64_t nBaseFee = 0;
-	if(this->nTime < FORK_TIME)
+	if(pindexBest->nHeight < FORK_HEIGHT_1)
 		nBaseFee = (mode == GMF_RELAY) ? MIN_RELAY_TX_FEE : MIN_TX_FEE;
 	else
 		nBaseFee = (mode == GMF_RELAY) ? MIN_RELAY_TX_FEE_V2 : MIN_TX_FEE_V2;
@@ -758,7 +754,7 @@ bool CTxMemPool::accept(CTxDB& txdb, CTransaction &tx, bool fCheckInputs,
         // Continuously rate-limit free transactions
         // This mitigates 'penny-flooding' -- sending thousands of free transactions just to
         // be annoying or make others' transactions take longer to confirm.
-        if (nFees < (tx.nTime < FORK_TIME ? MIN_RELAY_TX_FEE : MIN_RELAY_TX_FEE_V2))
+        if (nFees < (pindexBest->nHeight < FORK_HEIGHT_1 ? MIN_RELAY_TX_FEE : MIN_RELAY_TX_FEE_V2))
         {
             static CCriticalSection cs;
             static double dFreeCount;
@@ -1116,7 +1112,7 @@ int64_t GetProofOfStakeReward(int64_t nCoinAge, unsigned int nBits, unsigned int
 {
     int64_t nRewardCoinYear = MAX_MINT_PROOF_OF_STAKE;
 	
-	if(nTime < FORK_TIME) //old superblock reward
+	if(pindexBest->nHeight < FORK_HEIGHT_1) //old superblock reward
 	{
 		int64_t nSubsidy = nCoinAge * nRewardCoinYear / 365 / COIN;
 		int64_t nBonusSubsidy = 0;
@@ -1150,7 +1146,7 @@ int64_t GetProofOfStakeReward(int64_t nCoinAge, unsigned int nBits, unsigned int
 
 		return nSubsidy + nBonusSubsidy + nFees;
 	}
-	else if (nTime < FORK_TIME_2) //new superblock reward
+	else if (pindexBest->nHeight < FORK_HEIGHT_2) //new superblock reward
 	{
 		CBigNum bnSubsidy = CBigNum(nCoinAge) * nRewardCoinYear / 365 / COIN;
 		int64_t nSubsidy = bnSubsidy.getuint64();
@@ -1288,7 +1284,7 @@ unsigned int GetNextTargetRequired(const CBlockIndex* pindexLast, bool fProofOfS
     bnNew.SetCompact(pindexPrev->nBits);
 
     int nTargetTemp = nStakeTargetSpacing;
-	if(pindexLast->nTime > FORK_TIME)
+	if(pindexLast->nHeight > FORK_HEIGHT_1)
 		nTargetTemp = nTargetSpacing2; //fork target to 5 minute blocks
 	
     int nInterval = nTargetTimespan / nTargetTemp;
@@ -2401,7 +2397,6 @@ bool CBlock::AcceptBlock()
     uint256 hashProofOfStake = 0;
     if (IsProofOfStake())
     {
-		
         if (!CheckProofOfStake(vtx[1], nBits, hashProofOfStake))
         {
             printf("WARNING: ProcessBlock(): check proof-of-stake failed for block %s\n", hash.ToString().c_str());
@@ -2788,31 +2783,11 @@ bool LoadBlockIndex(bool fAllowNew)
         block.nVersion = 1;
         block.nTime    = 1441657188; // Mon, 07 Sep 2015 20:19:48 GMT
         block.nBits    = bnProofOfWorkLimit.GetCompact();
-        block.nNonce   = 0;
+        block.nNonce   = 751708;
         if(fTestNet)
         {
-            block.nNonce   = 0;
+            block.nNonce   = 751708;
         }
-        if (true  && (block.GetHash() != hashGenesisBlock)) {
-
-        // This will figure out a valid hash and Nonce if you're
-        // creating a different genesis block:
-            uint256 hashTarget = CBigNum().SetCompact(block.nBits).getuint256();
-            while (block.GetHash() > hashTarget)
-               {
-                   ++block.nNonce;
-                   if (block.nNonce == 0)
-                   {
-                       printf("NONCE WRAPPED, incrementing time");
-                       ++block.nTime;
-                   }
-               }
-        }
-        block.print();
-        printf("block.GetHash() == %s\n", block.GetHash().ToString().c_str());
-        printf("block.hashMerkleRoot == %s\n", block.hashMerkleRoot.ToString().c_str());
-        printf("block.nTime = %u \n", block.nTime);
-        printf("block.nNonce = %u \n", block.nNonce);
 
         //// debug print
         assert(block.hashMerkleRoot == uint256("0x5ecdd31de4d904d8986f5126a7f277398bfa8abbe15ad7d6eb0c27790b2dba47"));
@@ -3123,7 +3098,7 @@ bool static ProcessMessage(CNode* pfrom, string strCommand, CDataStream& vRecv)
         CAddress addrFrom;
         uint64_t nNonce = 1;
         vRecv >> pfrom->nVersion >> pfrom->nServices >> nTime >> addrMe;
-        if (pfrom->nVersion < (GetAdjustedTime() > FORK_TIME_2 ? MIN_PROTO_VERSION_FORK_2 : MIN_PROTO_VERSION_FORK))
+        if (pfrom->nVersion < (pindexBest->nHeight > FORK_HEIGHT_2 ? MIN_PROTO_VERSION_FORK_2 : MIN_PROTO_VERSION_FORK))
         {
             // Since February 20, 2012, the protocol is initiated at version 209,
             // and earlier versions are no longer supported
@@ -3217,7 +3192,7 @@ bool static ProcessMessage(CNode* pfrom, string strCommand, CDataStream& vRecv)
         static int nAskedForBlocks = 0;
         if (!pfrom->fClient && !pfrom->fOneShot &&
             (pfrom->nStartingHeight > (nBestHeight - 144)) &&
-            (pfrom->nVersion < NOBLKS_VERSION_START || pfrom->nVersion > (GetAdjustedTime() > FORK_TIME_2 ? NOBLKS_VERSION_END_FORK_2 : NOBLKS_VERSION_END_FORK)) &&
+            (pfrom->nVersion < NOBLKS_VERSION_START || pfrom->nVersion > (pindexBest->nHeight > FORK_HEIGHT_2 ? NOBLKS_VERSION_END_FORK_2 : NOBLKS_VERSION_END_FORK)) &&
              (nAskedForBlocks < 1 || vNodes.size() <= 1))
         {
             nAskedForBlocks++;
