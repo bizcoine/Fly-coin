@@ -161,7 +161,7 @@ bool ComputeNextStakeModifier(const CBlockIndex* pindexPrev, uint64_t& nStakeMod
 
     // Sort candidate blocks by timestamp
     vector<pair<int64_t, uint256> > vSortedByTimestamp;
-	if(pindexPrev->nHeight > FORK_HEIGHT_1)
+	if(pindexPrev->nTime > FORK_TIME)
 		vSortedByTimestamp.reserve(64 * nModifierInterval / nTargetSpacing2);
 	else
 		vSortedByTimestamp.reserve(64 * nModifierInterval / nTargetSpacing);
@@ -305,7 +305,7 @@ bool stakeTargetHit(uint256 hashProofOfStake, int64_t nTimeWeight, int64_t nValu
 {	
 	//get the stake weight
 	CBigNum bnCoinDayWeight;
-	if(pindexBest->nHeight < FORK_HEIGHT_1)
+	if(nTime < FORK_TIME)
 		bnCoinDayWeight = CBigNum(nValueIn) * nTimeWeight / COIN / (24 * 60 * 60);
 	else
 		bnCoinDayWeight = CBigNum(nValueIn * 100) * nTimeWeight / COIN / (24 * 60 * 60); // increase weight by a factor of 100 to make difficulty more sensitive
@@ -412,7 +412,7 @@ bool CheckProofOfStake(const CTransaction& tx, unsigned int nBits, uint256& hash
 
 	unsigned int nInterval = 0;
 	unsigned int nTxTime = tx.nTime;
-    if (!CheckStakeKernelHash(nBits, block, txindex.pos.nTxPos - txindex.pos.nBlockPos, txPrev, txin.prevout, nTxTime, nInterval, true, hashProofOfStake, fDebug) && pindexBest->nHeight < FORK_HEIGHT_5)
+    if (!CheckStakeKernelHash(nBits, block, txindex.pos.nTxPos - txindex.pos.nBlockPos, txPrev, txin.prevout, nTxTime, nInterval, true, hashProofOfStake, fDebug) && FORK_TIME_5 > nTxTime)
         return tx.DoS(1, error("CheckProofOfStake() : INFO: check kernel failed on coinstake %s, hashProof=%s", tx.GetHash().ToString().c_str(), hashProofOfStake.ToString().c_str())); // may occur during initial download or if behind on block chain sync
 
     return true;

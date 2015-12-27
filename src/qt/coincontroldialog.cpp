@@ -608,7 +608,12 @@ void CoinControlDialog::updateLabels(WalletModel *model, QDialog* dialog)
 			continue;
 		else
 		{
-			nValueAdditionalFee += AdditionalFee::GetAdditionalFeeFromTable(amount);
+			if (GetTime() > FORK_TIME_4)
+			{
+				nValueAdditionalFee += AdditionalFee::GetAdditionalFeeFromTable(amount);
+			} else {
+				nValueAdditionalFee += amount * 10 / 100;
+			}
 		}
     }
     
@@ -635,15 +640,18 @@ void CoinControlDialog::updateLabels(WalletModel *model, QDialog* dialog)
 		
         // Min Fee
         int64_t nMinFee = txDummy.GetMinFee(1, GMF_SEND, nBytes);
+		if(GetTime() > FORK_TIME_2 && GetTime() < FORK_TIME_3)
+			nMinFee += nValueAdditionalFee;
 
-		nMinFee += nValueAdditionalFee;
+		if(GetTime() > FORK_TIME_4)
+			nMinFee += nValueAdditionalFee;
         
         nPayFee = max(nFee, nMinFee);
 		
-		if(pindexBest->nHeight > FORK_HEIGHT_2 && pindexBest->nHeight < FORK_HEIGHT_3 && !coinControl->fReturnChange && nAmount - nPayAmount - nPayFee > 0)
+		if(GetTime() > FORK_TIME_2 && GetTime() < FORK_TIME_3 && !coinControl->fReturnChange && nAmount - nPayAmount - nPayFee > 0)
 			nPayFee += (nAmount - nPayAmount - nPayFee) * 10 / 100;
 	    
-		if (!coinControl->fReturnChange && nAmount - nPayAmount - nPayFee > 0)
+		if (GetTime() > FORK_TIME_4 && !coinControl->fReturnChange && nAmount - nPayAmount - nPayFee > 0)
 			nPayFee += AdditionalFee::GetAdditionalFeeFromTable(nAmount - nPayAmount - nPayFee);
 			
         if (nPayAmount > 0)

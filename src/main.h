@@ -43,14 +43,13 @@ static const int MAX_TIME_SINCE_BEST_BLOCK = 10; // how many seconds to wait bef
 static const int MODIFIER_INTERVAL_SWITCH = 100;
 
 static const unsigned int BLOCK_SWITCH_TIME = 1435708800; // 07/01/2015 @ 12:00am (UTC)
-
-static const int FORK_HEIGHT_1 = 24036;
-static const int FORK_HEIGHT_2 = 30124;
-static const int FORK_HEIGHT_3 = 31130;
-static const int FORK_HEIGHT_4 = 33762;
-static const int FORK_HEIGHT_5 = 38970;
+static const unsigned int FORK_TIME = 1444752000; // (GMT): Tue, 13 Oct 2015 16:00:00 GMT
+static const unsigned int FORK_TIME_2 = 1446915600; // Sat, 07 Nov 2015 17:00:00 GMT
+static const unsigned int FORK_TIME_3 = 1447278900; // Wednesday, 11 Nov 2015 21:55:00 GMT //keesdewit
+static const unsigned int FORK_TIME_4 = 1448211600; // Sunday, 22 Nov 2015 17:00:00 GMT //keesdewit
+static const unsigned int FORK_TIME_5 = 1450046160; // Sunday, 13 Dec 2015 22:36:00 GMT //keesdewit
 static const int FORK_HEIGHT_6 = 40180;
-static const int FORK_HEIGHT_7 = 42200;
+static const int FORK_HEIGHT_7 = 41200;
 
 static const int64_t STAKING_FEES = 0.1 * COIN;
 static const int64_t TX_FEES_BURNING_RATE = 0.1 * COIN;
