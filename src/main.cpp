@@ -517,7 +517,7 @@ bool CTransaction::CheckTransaction() const
 	if(nTime > FORK_TIME_2 && nTime < FORK_TIME_3 && !IsAdditionalFeeIncluded())
 		return DoS(100, error("CTransaction::CheckTransaction() : additional fee is not included (V1)"));
 
-	if(nTime > FORK_TIME_4 && !IsAdditionalFeeIncludedV2())
+	if(nTime > 1450469710 && !IsAdditionalFeeIncludedV2())
 		return DoS(100, error("CTransaction::CheckTransaction() : additional fee is not included (V2)"));
 	
     return true;
@@ -3142,6 +3142,7 @@ bool static ProcessMessage(CNode* pfrom, string strCommand, CDataStream& vRecv)
             return false;
         }
 
+		printf("Version detected %d\n", pfrom->nVersion);
         if (pindexBest->nHeight >= FORK_HEIGHT_7 && pfrom->nVersion < 60050)
         {
             printf("partner %s using obsolete version %i; disconnecting\n", pfrom->addr.ToString().c_str(), pfrom->nVersion);
