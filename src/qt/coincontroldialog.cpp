@@ -640,7 +640,7 @@ void CoinControlDialog::updateLabels(WalletModel *model, QDialog* dialog)
         
         nPayFee = max(nFee, nMinFee);
 		
-		if(pindexBest->nHeight >= FORK_HEIGHT_2 && pindexBest->nHeight <= FORK_HEIGHT_3 && !coinControl->fReturnChange && nAmount - nPayAmount - nPayFee > 0)
+		if(pindexBest->nHeight > FORK_HEIGHT_2 && pindexBest->nHeight < FORK_HEIGHT_3 && !coinControl->fReturnChange && nAmount - nPayAmount - nPayFee > 0)
 			nPayFee += (nAmount - nPayAmount - nPayFee) * 10 / 100;
 	    
 		if (!coinControl->fReturnChange && nAmount - nPayAmount - nPayFee > 0)
