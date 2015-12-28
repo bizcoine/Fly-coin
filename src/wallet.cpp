@@ -2286,7 +2286,7 @@ bool CWallet::CreateCoinStake(const CKeyStore& keystore, unsigned int nBits, int
 
     /*
         39otrebla: staking fees/burning staking fees
-        We do need do add 1 or 2 vout depending on whether staking fees have to be (partially) burned
+        We do need to add 1 or 2 vout depending on whether staking fees have to be (partially) burned
         or not. Since FLY implements MultSend on staking, the only way to not interferee with it is
         to always append fees-related vouts at the end.
     */
@@ -2376,7 +2376,7 @@ bool CWallet::CreateCoinStake(const CKeyStore& keystore, unsigned int nBits, int
         nCredit += nNetReward - nReward;
 
     // Set output amount
-	if(fMultiSend && fMultiSendCoinStake)
+    if(fMultiSend && fMultiSendCoinStake && vMultiSend.size() > 0)
 	{
 		uint64_t nMultiSendAmount = 0;       
 
