@@ -11,12 +11,21 @@ class AnimatedSplash:public QSplashScreen
       setPixmap(QPixmap::fromImage(QImage(":/images/splash")));
       movie.start();
       connect(&movie,SIGNAL(updated(QRect)),this,SLOT(frameUpdate()));
+	  	  
+	  QTimer *timer = new QTimer(this);
+      connect(timer, SIGNAL(timeout()), this, SLOT(updateEvent()));
+      timer->start(10);
     }
 
     ~AnimatedSplash()
     {}
 
 	QString startUpText;
+	
+	void updateEvent()
+	{
+		QApplication::instance()->processEvents();
+	}
 	
     void paintEvent(QPaintEvent* event)
     {
