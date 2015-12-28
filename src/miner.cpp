@@ -119,7 +119,7 @@ CBlock* CreateNewBlock(CWallet* pwallet, bool fProofOfStake, int64_t* pFees)
     // Create coinbase tx
     CTransaction txNew;
     txNew.vin.resize(1);
-    txNew.vin[0].prevout.SetNull(); 
+    txNew.vin[0].prevout.SetNull();
     txNew.vout.resize(2);
 
     if (!fProofOfStake)

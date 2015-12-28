@@ -33,19 +33,19 @@ greaterThan(QT_MAJOR_VERSION, 4) {
 
 win32 {
 	BOOST_LIB_SUFFIX=-mgw49-mt-s-1_55
-	BOOST_INCLUDE_PATH=D:/deps/boost_1_55_0
-	BOOST_LIB_PATH=D:/deps/boost_1_55_0/stage/lib
-	BDB_INCLUDE_PATH=D:/deps/db-4.8.30.NC/build_unix
-	BDB_LIB_PATH=D:/deps/db-4.8.30.NC/build_unix
-	OPENSSL_INCLUDE_PATH=D:/deps/openssl-1.0.2d/include
-	OPENSSL_LIB_PATH=D:/deps/openssl-1.0.2d
-	MINIUPNPC_INCLUDE_PATH=D:/deps/miniupnpc
-	MINIUPNPC_LIB_PATH=D:/deps/miniupnpc
-	MINIUPNP_STATICLIB=D:/deps/miniupnpc
-	QRENCODE_INCLUDE_PATH=D:/deps/qrencode-3.4.4
-	QRENCODE_LIB_PATH=D:/deps/qrencode-3.4.4/.libs
-    SECP256K1_LIB_PATH = D:/deps/secp256k1/.libs
-    SECP256K1_INCLUDE_PATH = D:/deps/secp256k1/include	
+	BOOST_INCLUDE_PATH=C:/Deps/boost_1_55_0
+	BOOST_LIB_PATH=C:/Deps/boost_1_55_0/stage/lib
+	BDB_INCLUDE_PATH=C:/Deps/db-4.8.30.NC/build_unix
+	BDB_LIB_PATH=C:/Deps/db-4.8.30.NC/build_unix
+	OPENSSL_INCLUDE_PATH=C:/Deps/openssl-1.0.2d/include
+	OPENSSL_LIB_PATH=C:/Deps/openssl-1.0.2d
+	MINIUPNPC_INCLUDE_PATH=C:/Deps/miniupnpc
+	MINIUPNPC_LIB_PATH=C:/Deps/miniupnpc
+	MINIUPNP_STATICLIB=C:/Deps/miniupnpc
+	QRENCODE_INCLUDE_PATH=C:/Deps/qrencode-3.4.4
+	QRENCODE_LIB_PATH=C:/Deps/qrencode-3.4.4/.libs
+    SECP256K1_LIB_PATH = C:/Deps/secp256k1/.libs
+    SECP256K1_INCLUDE_PATH = C:/Deps/secp256k1/include	
 } 
 
 OBJECTS_DIR = build
@@ -207,6 +207,7 @@ HEADERS += src/qt/bitcoingui.h \
 	src/qt/charitydialog.h \
     src/qt/editaddressdialog.h \
     src/qt/bitcoinaddressvalidator.h \
+	src/qt/animatedsplash.h \
     src/alert.h \
     src/addrman.h \
     src/base58.h \

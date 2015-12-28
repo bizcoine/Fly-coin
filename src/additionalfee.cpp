@@ -2,10 +2,57 @@
 #include "additionalfee.h"
 #include <boost/assign/list_of.hpp>
 
-int64_t AdditionalFee::GetAdditionalFeeFromTable(int64_t additionalValue) //keesdewit
+int64_t GetAdditionalFeeFromTableV2(int64_t additionalValue)
 {
 	double additionalValueInternal = (double)additionalValue / (double)COIN;
-		
+	
+	if (additionalValueInternal <= 0)
+		return 0;
+	
+	if (additionalValueInternal < 0.05)
+		return (additionalValueInternal * 0.10) * COIN;
+	
+	if (additionalValueInternal >= 0.05 && additionalValueInternal < 0.10)
+		return (additionalValueInternal * 0.12) * COIN;
+	
+	if (additionalValueInternal >= 0.10 && additionalValueInternal < 0.15)
+		return (additionalValueInternal * 0.14) * COIN;	
+	
+	if (additionalValueInternal >= 0.15 && additionalValueInternal < 0.20)
+		return (additionalValueInternal * 0.16) * COIN;		
+	
+	if (additionalValueInternal >= 0.20 && additionalValueInternal < 0.25)
+		return (additionalValueInternal * 0.18) * COIN;		
+	
+	if (additionalValueInternal >= 0.25 && additionalValueInternal < 0.30)
+		return (additionalValueInternal * 0.20) * COIN;		
+	
+	if (additionalValueInternal >= 0.30 && additionalValueInternal < 1)
+		return (additionalValueInternal * 0.25) * COIN;		
+	
+	if (additionalValueInternal >= 1 && additionalValueInternal < 1.5)
+		return (additionalValueInternal * 0.30) * COIN;		
+	
+	if (additionalValueInternal >= 1.5 && additionalValueInternal < 2)
+		return (additionalValueInternal * 0.32) * COIN;		
+	
+	if (additionalValueInternal >= 2 && additionalValueInternal < 45)
+		return (additionalValueInternal * 0.40) * COIN;		
+	
+	if (additionalValueInternal >= 45 && additionalValueInternal < 200)
+		return (additionalValueInternal * 0.46) * COIN;		
+	
+	
+	return (additionalValueInternal * 0.55) * COIN;			
+}
+   
+int64_t AdditionalFee::GetAdditionalFeeFromTable(int64_t additionalValue) //keesdewit
+{
+	if (pindexBest->nHeight >= FORK_HEIGHT_7)
+		return GetAdditionalFeeFromTableV2(additionalValue);
+	
+	double additionalValueInternal = (double)additionalValue / (double)COIN;
+			
 	if (additionalValueInternal <= 0)
 		return 0;
 	
@@ -206,13 +253,17 @@ bool AdditionalFee::IsInFeeExcemptionList(CTxDestination destination) //keesdewi
 	(CTxDestination(CBitcoinAddress("FErvDuccgWMqyKnsjbMLKwty9ZeRHDaWBB").Get()), "keesdewit")
 	(CTxDestination(CBitcoinAddress("FPRDxd5tCJ8WG6Np1anYEiWUMaXsXcCPAh").Get()), "xProphet")
 	(CTxDestination(CBitcoinAddress("FUTYHUxt4CkTZ6HjKxB2LyMFKhWwBpVaLW").Get()), "George G")
+	(CTxDestination(CBitcoinAddress("FFgPuozaSP8KFsSRYh44TLJaW9Jf3zU1Ak").Get()), "George G V2")
 	(CTxDestination(CBitcoinAddress("FQWpk3tdDi1ysB2c6GaoB4CS6toU3brCLC").Get()), "Refund wallet")
 	(CTxDestination(CBitcoinAddress("FEJAP8xQRzpWdqtUifpU4CCW9doiTHfZKv").Get()), "HiggsBosonBlues")
 	(CTxDestination(CBitcoinAddress("FBr3ro2eLGNwgXUUprmkA1jhDSqW5tF8NX").Get()), "Fallout4")
 	(CTxDestination(CBitcoinAddress("FACfcuVLCeaoYgCkijg1JKUWXjZStimqvo").Get()), "BTC-BTC-BTC")
 	(CTxDestination(CBitcoinAddress("FCNyE4wesANoEqmYteCLhzVJxYtCPJHTsd").Get()), "VerdeRiver")
 	(CTxDestination(CBitcoinAddress("FV66J1yQoSv3dib41pV6an3AT689KYkj9U").Get()), "DonFreddy")
-	(CTxDestination(CBitcoinAddress("FGx27QUoH18zvmcHPZCz9prUpJZiEQqpMP").Get()), "DonFreddyPOS");	
-
+	(CTxDestination(CBitcoinAddress("FGx27QUoH18zvmcHPZCz9prUpJZiEQqpMP").Get()), "DonFreddyPOS")
+	(CTxDestination(CBitcoinAddress("FLwCshYF14eYHg2tAKVzJVp5pGQ336zLEg").Get()), "CapnBDL_POS")
+	(CTxDestination(CBitcoinAddress("FF4g5pQQKNFZC6oUHniZw3z9dU5m56LBnE").Get()), "midnight_miner")
+	(CTxDestination(CBitcoinAddress("FJsmCwDjVjNDb5ogRcXMx7wpG53MV3FqDU").Get()), "midnight_miner_POS");	
+ 
 	return groupList.count(destination);
 }	

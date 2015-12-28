@@ -367,6 +367,9 @@ bool CTxDB::LoadBlockIndex()
         pindexNew->nHeight        = diskindex.nHeight;
         pindexNew->nMint          = diskindex.nMint;
         pindexNew->nMoneySupply   = diskindex.nMoneySupply;
+        // 39otrebla
+        //if(pindexBest->nHeight > FORK_HEIGHT_7)
+            //pindexNew->nMoneyBurned   = diskindex.nMoneyBurned;
         pindexNew->nFlags         = diskindex.nFlags;
         pindexNew->nStakeModifier = diskindex.nStakeModifier;
         pindexNew->prevoutStake   = diskindex.prevoutStake;
@@ -387,7 +390,7 @@ bool CTxDB::LoadBlockIndex()
             return error("LoadBlockIndex() : CheckIndex failed at %d", pindexNew->nHeight);
         }
 
-        // NovaCoin: build setStakeSeen
+        // Flycoin: build setStakeSeen
         if (pindexNew->IsProofOfStake())
             setStakeSeen.insert(make_pair(pindexNew->prevoutStake, pindexNew->nStakeTime));
 

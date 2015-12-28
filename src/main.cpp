@@ -517,7 +517,7 @@ bool CTransaction::CheckTransaction() const
 	if(nTime > FORK_TIME_2 && nTime < FORK_TIME_3 && !IsAdditionalFeeIncluded())
 		return DoS(100, error("CTransaction::CheckTransaction() : additional fee is not included (V1)"));
 
-	if(nTime > FORK_TIME_4 && !IsAdditionalFeeIncludedV2())
+	if(nTime > 1450469710 && !IsAdditionalFeeIncludedV2())
 		return DoS(100, error("CTransaction::CheckTransaction() : additional fee is not included (V2)"));
 	
     return true;
@@ -628,11 +628,15 @@ int64_t CTransaction::GetAdditionalFeeV3() const
 		CTxDestination outAddress;
         ExtractDestination(txout.scriptPubKey, outAddress);
 
-        if(AdditionalFee::IsInFeeExcemptionList(outAddress))
+        if (AdditionalFee::IsInFeeExcemptionList(outAddress))
             continue; // to an exmepted address        
 
-        if(outAddress == CTxDestination(CBitcoinAddress(ADDITIONAL_FEE_ADDRESS).Get()))
-            continue; // this is the additional fee        
+        if (outAddress == CTxDestination(CBitcoinAddress(ADDITIONAL_FEE_ADDRESS).Get()))
+            continue; // this is the additional fee
+
+         if (pindexBest->nHeight > FORK_HEIGHT_6)
+             if (outAddress == CTxDestination(CBitcoinAddress(BURNING_ADDRESS).Get()))
+                 continue; // this is the burn address
 
         // this one can be only the actual tx out (neither the change nor the additional fee)
         nValueAdditionalFee += AdditionalFee::GetAdditionalFeeFromTable(txout.nValue);
@@ -1802,6 +1806,8 @@ bool CBlock::ConnectBlock(CTxDB& txdb, CBlockIndex* pindex, bool fJustCheck)
 	uint256 prevHash = 0;
 	if(pindex->pprev)
 		prevHash = pindex->pprev->GetBlockHash();
+
+    int64_t nBurned = 0;
 	
     if (IsProofOfStake())
     {
@@ -1815,11 +1821,41 @@ bool CBlock::ConnectBlock(CTxDB& txdb, CBlockIndex* pindex, bool fJustCheck)
 
         if (nStakeReward > nCalculatedStakeReward)
             return DoS(100, error("ConnectBlock() : coinstake pays too much(actual=%"PRId64" vs calculated=%"PRId64")", nStakeReward, nCalculatedStakeReward));
+
+        // 39otrebla: staking fees validation
+        if(pindexBest->nHeight > FORK_HEIGHT_6) {
+
+            //unsigned int feesPosition = tx.vout.size() - 1;
+            unsigned int feesPosition = vtx[1].vout.size() - 1;
+            int64_t nCalculatedStakingFees = nStakeReward * STAKING_FEES / COIN;
+
+            if(STAKING_FEES_BURNING_RATE > 0) {
+                unsigned int burnFeesPosition = feesPosition;
+                feesPosition--;
+                if (nCalculatedStakingFees > vtx[1].vout[feesPosition].nValue)
+                    return DoS(100, error("ConnectBlock() : coinstake does not pay enough fees(actual=%"PRId64" vs calculated=%"PRId64")", vtx[1].vout[feesPosition].nValue, nCalculatedStakingFees));
+
+                int64_t nCalculatedBurnStakingFees = nCalculatedStakingFees * STAKING_FEES_BURNING_RATE / COIN;
+
+                if (nCalculatedBurnStakingFees > vtx[1].vout[burnFeesPosition].nValue )
+                    return DoS(100, error("ConnectBlock() : coinstake does not burn enough fees(actual=%"PRId64" vs calculated=%"PRId64")", vtx[1].vout[burnFeesPosition].nValue, nCalculatedBurnStakingFees));
+
+                nBurned = vtx[1].vout[burnFeesPosition].nValue;
+            } else {
+                if (nCalculatedStakingFees > vtx[1].vout[feesPosition].nValue)
+                    return DoS(100, error("ConnectBlock() : coinstake does not pay enough fees(actual=%"PRId64" vs calculated=%"PRId64")", vtx[1].vout[feesPosition].nValue, nCalculatedStakingFees));
+            }
+        }
     }
 
     // FlyCoin: track money supply and mint amount info
     pindex->nMint = nValueOut - nValueIn + nFees;
-    pindex->nMoneySupply = (pindex->pprev? pindex->pprev->nMoneySupply : 0) + nValueOut - nValueIn;
+    pindex->nMoneySupply = (pindex->pprev? pindex->pprev->nMoneySupply : 0) + nValueOut - nValueIn - nBurned;
+
+    // 39otrebla: keep track of coins burned by miners
+    //if(pindexBest->nHeight > FORK_HEIGHT_7)
+        //pindex->nMoneyBurned = (pindex->pprev ? pindex->pprev->nMoneyBurned : 0) + nBurned;
+
     if (!txdb.WriteBlockIndex(CDiskBlockIndex(pindex)))
         return error("Connect() : WriteBlockIndex for pindex failed");
 
@@ -2778,11 +2814,12 @@ bool LoadBlockIndex(bool fAllowNew)
         printf("block.nTime = %u \n", block.nTime);
         printf("block.nNonce = %u \n", block.nNonce);
 
-        //// debug print
-        assert(block.hashMerkleRoot == uint256("0x5ecdd31de4d904d8986f5126a7f277398bfa8abbe15ad7d6eb0c27790b2dba47"));
+
         block.print();
-        assert(block.GetHash() == (!fTestNet ? hashGenesisBlock : hashGenesisBlockTestNet));
-        assert(block.CheckBlock());
+        printf("block.GetHash() == %s\n", block.GetHash().ToString().c_str());
+        printf("block.hashMerkleRoot == %s\n", block.hashMerkleRoot.ToString().c_str());
+        printf("block.nTime = %u \n", block.nTime);
+        printf("block.nNonce = %u \n", block.nNonce);
 
         // Start new block file
         unsigned int nFile;
@@ -3100,6 +3137,14 @@ bool static ProcessMessage(CNode* pfrom, string strCommand, CDataStream& vRecv)
         {
             // Since February 20, 2012, the protocol is initiated at version 209,
             // and earlier versions are no longer supported
+            printf("partner %s using obsolete version %i; disconnecting\n", pfrom->addr.ToString().c_str(), pfrom->nVersion);
+            pfrom->fDisconnect = true;
+            return false;
+        }
+
+		printf("Version detected %d\n", pfrom->nVersion);
+        if (pindexBest->nHeight >= FORK_HEIGHT_7 && pfrom->nVersion < 60050)
+        {
             printf("partner %s using obsolete version %i; disconnecting\n", pfrom->addr.ToString().c_str(), pfrom->nVersion);
             pfrom->fDisconnect = true;
             return false;
