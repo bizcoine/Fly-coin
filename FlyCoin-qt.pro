@@ -207,6 +207,7 @@ HEADERS += src/qt/bitcoingui.h \
 	src/qt/charitydialog.h \
     src/qt/editaddressdialog.h \
     src/qt/bitcoinaddressvalidator.h \
+	src/qt/animatedsplash.h \
     src/alert.h \
     src/addrman.h \
     src/base58.h \
