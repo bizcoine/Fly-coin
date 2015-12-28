@@ -2139,6 +2139,8 @@ bool CWallet::CreateCoinStake(const CKeyStore& keystore, unsigned int nBits, int
     CBigNum bnTargetPerCoinDay;
     bnTargetPerCoinDay.SetCompact(nBits);
 
+    bool fSplitStake = false;
+
     txNew.vin.clear();
     txNew.vout.clear();
 
@@ -2257,7 +2259,7 @@ bool CWallet::CreateCoinStake(const CKeyStore& keystore, unsigned int nBits, int
 			uint64_t nTotalSize = pcoin.first->vout[pcoin.second].nValue * (1+((txNew.nTime - block.GetBlockTime()) / (60*60*24)) * (MAX_MINT_PROOF_OF_STAKE / COIN / 365));
 			//presstab HyperStake
 			//if MultiSend is set to send in coinstake we will add our outputs here (values asigned further down)
-			if(fMultiSend && fMultiSendCoinStake)
+            if(fMultiSend && fMultiSendCoinStake && vMultiSend.size() > 0)
 			{
 				for(unsigned int i = 0; i < vMultiSend.size(); i++)
 				{
@@ -2266,8 +2268,10 @@ bool CWallet::CreateCoinStake(const CKeyStore& keystore, unsigned int nBits, int
 					txNew.vout.push_back(CTxOut(0, scriptPubKeyMultiSend));
 				}
 			}
-			else if (nTotalSize / 2 > nStakeSplitThreshold * COIN)
-				txNew.vout.push_back(CTxOut(0, scriptPubKeyOut)); //split stake
+            else if (nTotalSize / 2 > nStakeSplitThreshold * COIN) {
+                fSplitStake = true;
+                txNew.vout.push_back(CTxOut(0, scriptPubKeyOut)); //split stake
+            }
 			if (fDebug && GetBoolArg("-printcoinstake"))
 				printf("CreateCoinStake : added kernel type=%d\n", whichType);
 			fKernelFound = true;
@@ -2400,7 +2404,7 @@ bool CWallet::CreateCoinStake(const CKeyStore& keystore, unsigned int nBits, int
 
         // 39otrebla: nCredit has been altered at line 2339 to
         // contain the net reward instead of the gross one
-        if (txNew.vout.size() == 3)
+        if (fSplitStake)
         {
             txNew.vout[1].nValue = ((nCredit / 2 / CENT) * CENT);
             txNew.vout[2].nValue = nCredit - txNew.vout[1].nValue;
