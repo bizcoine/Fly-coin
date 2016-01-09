@@ -7,7 +7,7 @@
 #include "alert.h"
 #include "checkpoints.h"
 #include "db.h"
-#include "txdb.h"FORK_HEIGHT_7
+#include "txdb.h"
 #include "net.h"
 #include "init.h"
 #include "ui_interface.h"
