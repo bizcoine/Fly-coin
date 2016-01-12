@@ -3142,13 +3142,20 @@ bool static ProcessMessage(CNode* pfrom, string strCommand, CDataStream& vRecv)
             return false;
         }
 
-		printf("Version detected %d\n", pfrom->nVersion);
+
         if (pindexBest->nHeight >= FORK_HEIGHT_7 && pfrom->nVersion < 60050)
         {
             printf("partner %s using obsolete version %i; disconnecting\n", pfrom->addr.ToString().c_str(), pfrom->nVersion);
             pfrom->fDisconnect = true;
             return false;
         }
+		
+        if (pindexBest->nHeight >= FORK_HEIGHT_8 && pfrom->nVersion < 60060)
+        {
+            printf("partner %s using obsolete version %i; disconnecting\n", pfrom->addr.ToString().c_str(), pfrom->nVersion);
+            pfrom->fDisconnect = true;
+            return false;
+        }		
 
         if (pfrom->nVersion == 10300)
             pfrom->nVersion = 300;
