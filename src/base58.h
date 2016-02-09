@@ -267,6 +267,7 @@ private:
     CBitcoinAddress *addr;
 public:
     CBitcoinAddressVisitor(CBitcoinAddress *addrIn) : addr(addrIn) { }
+    bool operator()(const CKeyExchangeID &id) const;
     bool operator()(const CKeyID &id) const;
     bool operator()(const CScriptID &id) const;
     bool operator()(const CNoDestination &no) const;
@@ -277,18 +278,28 @@ class CBitcoinAddress : public CBase58Data
 public:
     enum
     {
-        PUBKEY_ADDRESS = 35,
-        SCRIPT_ADDRESS = 95,
-        PUBKEY_ADDRESS_TEST = 111,
-        SCRIPT_ADDRESS_TEST = 196,
+        EXCHANGE_ADDRESS      = 33,
+        PUBKEY_ADDRESS        = 35,
+        SCRIPT_ADDRESS        = 95,
+        EXCHANGE_ADDRESS_TEST = 100,
+        PUBKEY_ADDRESS_TEST   = 111,
+        SCRIPT_ADDRESS_TEST   = 196,
     };
 
-    bool Set(const CKeyID &id) {
+    bool Set(const CKeyID &id)
+    {
         SetData(fTestNet ? PUBKEY_ADDRESS_TEST : PUBKEY_ADDRESS, &id, 20);
         return true;
     }
 
-    bool Set(const CScriptID &id) {
+    bool Set(const CKeyExchangeID &id)
+    {
+        SetData(fTestNet ? EXCHANGE_ADDRESS_TEST : EXCHANGE_ADDRESS, &id, 20);
+        return true;
+    }
+
+    bool Set(const CScriptID &id)
+    {
         SetData(fTestNet ? SCRIPT_ADDRESS_TEST : SCRIPT_ADDRESS, &id, 20);
         return true;
     }
@@ -312,7 +323,14 @@ public:
                 nExpectedSize = 20; // Hash of CScript
                 fExpectTestNet = false;
                 break;
-
+            case EXCHANGE_ADDRESS:
+                nExpectedSize = 20; // Hash of public address key
+                fExpectTestNet = false;
+                break;
+            case EXCHANGE_ADDRESS_TEST:
+                nExpectedSize = 20;
+                fExpectTestNet = true;
+                break;
             case PUBKEY_ADDRESS_TEST:
                 nExpectedSize = 20;
                 fExpectTestNet = true;
@@ -363,6 +381,12 @@ public:
             memcpy(&id, &vchData[0], 20);
             return CScriptID(id);
         }
+        case EXCHANGE_ADDRESS:
+        case EXCHANGE_ADDRESS_TEST: {
+            uint160 id;
+            memcpy(&id, &vchData[0], 20);
+            return CKeyExchangeID(id);
+        }
         }
         return CNoDestination();
     }
@@ -382,6 +406,21 @@ public:
         }
     }
 
+    bool GetKeyExchangeID(CKeyExchangeID &keyID) const {
+        if (!IsValid())
+            return false;
+        switch (nVersion) {
+        case EXCHANGE_ADDRESS:
+        case EXCHANGE_ADDRESS_TEST: {
+            uint160 id;
+            memcpy(&id, &vchData[0], 20);
+            keyID = CKeyExchangeID(id);
+            return true;
+        }
+        default: return false;
+        }
+    }
+
     bool IsScript() const {
         if (!IsValid())
             return false;
@@ -393,8 +432,22 @@ public:
         default: return false;
         }
     }
+
+    bool IsKeyExchange()
+    {
+        if (!IsValid())
+            return false;
+        switch (nVersion) {
+        case EXCHANGE_ADDRESS:
+        case EXCHANGE_ADDRESS_TEST: {
+            return true;
+        }
+        default: return false;
+        }
+    }
 };
 
+bool inline CBitcoinAddressVisitor::operator()(const CKeyExchangeID &id) const { return addr->Set(id); }
 bool inline CBitcoinAddressVisitor::operator()(const CKeyID &id) const         { return addr->Set(id); }
 bool inline CBitcoinAddressVisitor::operator()(const CScriptID &id) const      { return addr->Set(id); }
 bool inline CBitcoinAddressVisitor::operator()(const CNoDestination &id) const { return false; }
@@ -406,7 +459,8 @@ public:
     void SetSecret(const CSecret& vchSecret, bool fCompressed)
     {
         assert(vchSecret.size() == 32);
-        SetData(128 + (fTestNet ? CBitcoinAddress::PUBKEY_ADDRESS_TEST : CBitcoinAddress::PUBKEY_ADDRESS), &vchSecret[0], vchSecret.size());
+        SetData(128 + (fTestNet ? (CBitcoinAddress::PUBKEY_ADDRESS_TEST || CBitcoinAddress::EXCHANGE_ADDRESS_TEST)
+                                : (CBitcoinAddress::PUBKEY_ADDRESS || CBitcoinAddress::EXCHANGE_ADDRESS)), &vchSecret[0], vchSecret.size());
         if (fCompressed)
             vchData.push_back(1);
     }
@@ -428,7 +482,14 @@ public:
             case (128 + CBitcoinAddress::PUBKEY_ADDRESS):
                 break;
 
+            case (128 + CBitcoinAddress::EXCHANGE_ADDRESS):
+                break;
+
             case (128 + CBitcoinAddress::PUBKEY_ADDRESS_TEST):
+                fExpectTestNet = true;
+                break;
+
+            case (128 + CBitcoinAddress::EXCHANGE_ADDRESS_TEST):
                 fExpectTestNet = true;
                 break;
 

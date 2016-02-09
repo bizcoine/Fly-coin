@@ -105,6 +105,12 @@ int64_t AmountFromValue(const Value& value)
     return nAmount;
 }
 
+bool BoolFromValue(const Value& value)
+{
+    bool result = value.get_bool();
+    return result;
+}
+
 Value ValueFromAmount(int64_t amount)
 {
     return (double)amount / (double)COIN;
@@ -251,6 +257,7 @@ static const CRPCCommand vRPCCommands[] =
     { "getmininginfo",          &getmininginfo,          true,   false },
     { "getstakinginfo",         &getstakinginfo,         true,   false },
     { "getnewaddress",          &getnewaddress,          true,   false },
+    { "getnewaddressexchange",  &getnewaddressexchange,  true,   false },
     { "getnewpubkey",           &getnewpubkey,           true,   false },
     { "getaccountaddress",      &getaccountaddress,      true,   false },
     { "setaccount",             &setaccount,             true,   false },

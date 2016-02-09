@@ -180,10 +180,13 @@ void SendCoinsDialog::on_sendButton_clicked()
     {
         if(!model->getSplitBlock())
 		{
-		
-			if (!AdditionalFee::IsInFeeExcemptionList(CTxDestination(CBitcoinAddress(rcp.address.toUtf8().constData()).Get())))
+            if (!AdditionalFee::IsInFeeExcemptionList(CTxDestination(CBitcoinAddress(rcp.address.toUtf8().constData()).Get())))
 			{
-				nAdditionalFee += AdditionalFee::GetAdditionalFeeFromTable(rcp.amount);
+                CBitcoinAddress thisaddr = CBitcoinAddress(rcp.address.toUtf8().constData());
+                bool Exchange = false;
+                if(thisaddr.IsKeyExchange())
+                    Exchange = true;
+                nAdditionalFee += AdditionalFee::GetAdditionalFeeFromTable(rcp.amount, Exchange);
 			}
 			
 		#if QT_VERSION < 0x050000

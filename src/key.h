@@ -53,6 +53,17 @@ public:
     CKeyID(const uint160 &in) : uint160(in) { }
 };
 
+/** A reference to a CKeyExchange: the Hash160 of its serialized public key */
+/** This was the best solution to differentiating an Exchange key in the
+ * map address book from a regular address key - Griffith */
+class CKeyExchangeID : public uint160
+{
+public:
+    CKeyExchangeID() : uint160(0) { }
+    CKeyExchangeID(const uint160 &in) : uint160(in) { }
+};
+
+
 /** A reference to a CScript: the Hash160 of its serialization (see script.h) */
 class CScriptID : public uint160
 {
@@ -62,43 +73,77 @@ public:
 };
 
 /** An encapsulated public key. */
-class CPubKey {
-private:
-    std::vector<unsigned char> vchPubKey;
-    friend class CKey;
-
+class CPubKeyBase
+{
 public:
-    CPubKey() { }
-    CPubKey(const std::vector<unsigned char> &vchPubKeyIn) : vchPubKey(vchPubKeyIn) { }
-    friend bool operator==(const CPubKey &a, const CPubKey &b) { return a.vchPubKey == b.vchPubKey; }
-    friend bool operator!=(const CPubKey &a, const CPubKey &b) { return a.vchPubKey != b.vchPubKey; }
-    friend bool operator<(const CPubKey &a, const CPubKey &b) { return a.vchPubKey < b.vchPubKey; }
+    std::vector<unsigned char> vchPubKey;
+    friend class CKeyBase;
+
+
+    CPubKeyBase()
+    {
+    }
+    CPubKeyBase(const std::vector<unsigned char> &vchPubKeyIn) : vchPubKey(vchPubKeyIn)
+    {
+    }
+
+    friend bool operator==(const CPubKeyBase &a, const CPubKeyBase &b) { return a.vchPubKey == b.vchPubKey; }
+    friend bool operator!=(const CPubKeyBase &a, const CPubKeyBase &b) { return a.vchPubKey != b.vchPubKey; }
+    friend bool operator<(const CPubKeyBase &a, const CPubKeyBase &b) { return a.vchPubKey < b.vchPubKey; }
 
     IMPLEMENT_SERIALIZE(
         READWRITE(vchPubKey);
     )
 
-    CKeyID GetID() const {
-        return CKeyID(Hash160(vchPubKey));
-    }
-
-    uint256 GetHash() const {
+    uint256 GetHash() const
+    {
         return Hash(vchPubKey.begin(), vchPubKey.end());
     }
 
-    bool IsValid() const {
+    bool IsValid() const
+    {
         return vchPubKey.size() == 33 || vchPubKey.size() == 65;
     }
 
-    bool IsCompressed() const {
+    bool IsCompressed() const
+    {
         return vchPubKey.size() == 33;
     }
 
-    std::vector<unsigned char> Raw() const {
+    std::vector<unsigned char> Raw() const
+    {
         return vchPubKey;
     }
 };
 
+class CPubKey : public CPubKeyBase
+{
+public:
+    CPubKey(){}
+    CPubKey(const std::vector<unsigned char> &vchPubKeyIn)
+    {
+        vchPubKey = vchPubKeyIn;
+    }
+    CKeyID GetID() const
+    {
+        return CKeyID(Hash160(vchPubKey));
+    }
+
+};
+
+class CPubKeyExchange : public CPubKeyBase
+{
+public:
+    CPubKeyExchange(){}
+    CPubKeyExchange(const std::vector<unsigned char> &vchPubKeyIn)
+    {
+         vchPubKey = vchPubKeyIn;
+    }
+    CKeyExchangeID GetID() const
+    {
+        return CKeyExchangeID(Hash160(vchPubKey));
+    }
+};
 
 // secure_allocator is defined in allocators.h
 // CPrivKey is a serialized private key, with all parameters included (279 bytes)
@@ -106,26 +151,27 @@ typedef std::vector<unsigned char, secure_allocator<unsigned char> > CPrivKey;
 // CSecret is a serialization of just the secret parameter (32 bytes)
 typedef std::vector<unsigned char, secure_allocator<unsigned char> > CSecret;
 
-/** An encapsulated OpenSSL Elliptic Curve key (public and/or private) */
-class CKey
+
+/** The CKeyBase is the base for the CKey which is a normal address and
+ * the CKeyExchange which is the second address type implemented - Griffith */
+class CKeyBase
 {
 protected:
     EC_KEY* pkey;
     bool fSet;
     bool fCompressedPubKey;
-
     void SetCompressedPubKey();
 
 public:
 
     void Reset();
 
-    CKey();
-    CKey(const CKey& b);
+    CKeyBase();
+    CKeyBase(const CKeyBase& b);
 
-    CKey& operator=(const CKey& b);
+    CKeyBase& operator=(const CKeyBase& b);
 
-    ~CKey();
+    ~CKeyBase();
 
     bool IsNull() const;
     bool IsCompressed() const;
@@ -135,16 +181,9 @@ public:
     bool SetSecret(const CSecret& vchSecret, bool fCompressed = false);
     CSecret GetSecret(bool &fCompressed) const;
     CPrivKey GetPrivKey() const;
-    bool SetPubKey(const CPubKey& vchPubKey);
-    CPubKey GetPubKey() const;
+    bool SetPubKey(const CPubKeyBase& vchPubKey);
 
     bool Sign(uint256 hash, std::vector<unsigned char>& vchSig);
-
-    // create a compact signature (65 bytes), which allows reconstructing the used public key
-    // The format is one header byte, followed by two times 32 bytes for the serialized r and s values.
-    // The header byte: 0x1B = first key with even y, 0x1C = first key with odd y,
-    //                  0x1D = second key with even y, 0x1E = second key with odd y
-    bool SignCompact(uint256 hash, std::vector<unsigned char>& vchSig);
 
     // reconstruct public key from a compact signature
     // This is only slightly more CPU intensive than just verifying it.
@@ -153,6 +192,47 @@ public:
     bool SetCompactSignature(uint256 hash, const std::vector<unsigned char>& vchSig);
 
     bool Verify(uint256 hash, const std::vector<unsigned char>& vchSig);
+};
+
+/** An encapsulated OpenSSL Elliptic Curve key (public and/or private) */
+class CKey : public CKeyBase
+{
+protected:
+    const bool exchangekey = false;
+
+public:
+    CKey();
+    CKey(const CKey& b);
+    CPubKey GetPubKey() const;
+
+    // create a compact signature (65 bytes), which allows reconstructing the used public key
+    // The format is one header byte, followed by two times 32 bytes for the serialized r and s values.
+    // The header byte: 0x1B = first key with even y, 0x1C = first key with odd y,
+    //                  0x1D = second key with even y, 0x1E = second key with odd y
+    bool SignCompact(uint256 hash, std::vector<unsigned char>& vchSig);
+
+    // Verify a compact signature
+    bool VerifyCompact(uint256 hash, const std::vector<unsigned char>& vchSig);
+
+    bool IsValid();
+};
+
+/** An encapsulated OpenSSL Elliptic Curve key (public and/or private) for a secondary address type (Exchange address) - Griffith*/
+class CKeyExchange : public CKeyBase
+{
+protected:
+    const bool exchangekey = true;
+
+public:
+    CKeyExchange();
+    CKeyExchange(const CKeyExchange& b);
+    CPubKeyExchange GetPubKeyExchange() const;
+
+    // create a compact signature (65 bytes), which allows reconstructing the used public key
+    // The format is one header byte, followed by two times 32 bytes for the serialized r and s values.
+    // The header byte: 0x1B = first key with even y, 0x1C = first key with odd y,
+    //                  0x1D = second key with even y, 0x1E = second key with odd y
+    bool SignCompact(uint256 hash, std::vector<unsigned char>& vchSig);
 
     // Verify a compact signature
     bool VerifyCompact(uint256 hash, const std::vector<unsigned char>& vchSig);
