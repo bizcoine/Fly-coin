@@ -529,7 +529,6 @@ CPubKey CKey::GetPubKey() const
     return CPubKey(vchPubKey);
 }
 
-
 CPubKeyExchange CKeyExchange::GetPubKeyExchange() const
 {
     int nSize = i2o_ECPublicKey(pkey, NULL);

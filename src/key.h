@@ -6,6 +6,8 @@
 #ifndef BITCOIN_KEY_H
 #define BITCOIN_KEY_H
 
+#include <boost/variant.hpp>
+
 #include <stdexcept>
 #include <vector>
 
@@ -128,6 +130,10 @@ public:
     {
         return CKeyID(Hash160(vchPubKey));
     }
+    CPubKeyBase GetBase() const
+    {
+        return CPubKeyBase(vchPubKey);
+    }
 
 };
 
@@ -142,6 +148,10 @@ public:
     CKeyExchangeID GetID() const
     {
         return CKeyExchangeID(Hash160(vchPubKey));
+    }
+    CPubKeyBase GetBase() const
+    {
+        return CPubKeyBase(vchPubKey);
     }
 };
 
@@ -239,5 +249,8 @@ public:
 
     bool IsValid();
 };
+
+
+typedef boost::variant<CKeyID, CKeyExchangeID> CKeyType;
 
 #endif

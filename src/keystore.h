@@ -45,7 +45,7 @@ public:
     }
 };
 
-typedef std::map<CKeyID, std::pair<CSecret, bool> > KeyMap;
+typedef std::map<CKeyType, std::pair<CSecret, bool> > KeyMap;
 typedef std::map<CScriptID, CScript > ScriptMap;
 
 /** Basic key store, that keeps keys in an address->secret map */
@@ -57,6 +57,7 @@ protected:
 
 public:
     bool AddKey(const CKey& key);
+    bool AddKey(const CKeyExchange& key);
     bool HaveKey(const CKeyID &address) const
     {
         bool result;
@@ -79,7 +80,7 @@ public:
             }
         }
     }
-    bool GetKey(const CKeyID &address, CKey &keyOut) const
+    bool GetKey(const CKeyType &address, CKey &keyOut) const
     {
         {
             LOCK(cs_KeyStore);
@@ -98,7 +99,7 @@ public:
     virtual bool GetCScript(const CScriptID &hash, CScript& redeemScriptOut) const;
 };
 
-typedef std::map<CKeyID, std::pair<CPubKey, std::vector<unsigned char> > > CryptedKeyMap;
+typedef std::map<CKeyID, std::pair<CPubKeyBase, std::vector<unsigned char> > > CryptedKeyMap;
 
 /** Keystore which keeps the private keys encrypted.
  * It derives from the basic key store, which is used if no encryption is active.
@@ -147,7 +148,9 @@ public:
     bool Lock();
 
     virtual bool AddCryptedKey(const CPubKey &vchPubKey, const std::vector<unsigned char> &vchCryptedSecret);
+    virtual bool AddCryptedKey(const CPubKeyExchange &vchPubKey, const std::vector<unsigned char> &vchCryptedSecret);
     bool AddKey(const CKey& key);
+    bool AddKey(const CKeyExchange& key);
     bool HaveKey(const CKeyID &address) const
     {
         {
@@ -158,7 +161,7 @@ public:
         }
         return false;
     }
-    bool GetKey(const CKeyID &address, CKey& keyOut) const;
+    bool GetKey(const CKeyType &address, CKey& keyOut) const;
     bool GetPubKey(const CKeyID &address, CPubKey& vchPubKeyOut) const;
     void GetKeys(std::set<CKeyID> &setAddress) const
     {
