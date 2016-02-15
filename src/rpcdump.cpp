@@ -294,23 +294,45 @@ Value dumpwallet(const Array& params, bool fHelp)
     file << strprintf("# * Best block at time of backup was %i (%s),\n", nBestHeight, hashBestChain.ToString().c_str());
     file << strprintf("#   mined on %s\n", EncodeDumpTime(pindexBest->nTime).c_str());
     file << "\n";
-    for (std::vector<std::pair<int64_t, CKeyType> >::const_iterator it = vKeyBirth.begin(); it != vKeyBirth.end(); it++) {
-        const CKeyType &keyid = it->second;
+    for (std::vector<std::pair<int64_t, CKeyType> >::const_iterator it = vKeyBirth.begin(); it != vKeyBirth.end(); it++)
+    {
+        const CKeyType &keyType = it->second;
         std::string strTime = EncodeDumpTime(it->first);
-        std::string strAddr = CBitcoinAddress(keyid).ToString();
+        std::string strAddr = CBitcoinAddress(keyType).ToString();
         bool IsCompressed;
 
-        CKey key;
-        if (pwalletMain->GetKey(keyid, key)) {
-            if (pwalletMain->mapAddressBook.count(keyid)) {
-                CSecret secret = key.GetSecret(IsCompressed);
-                file << strprintf("%s %s label=%s # addr=%s\n", CBitcoinSecret(secret, IsCompressed).ToString().c_str(), strTime.c_str(), EncodeDumpString(pwalletMain->mapAddressBook[keyid]).c_str(), strAddr.c_str());
-            } else if (setKeyPool.count(keyid)) {
-                CSecret secret = key.GetSecret(IsCompressed);
-                file << strprintf("%s %s reserve=1 # addr=%s\n", CBitcoinSecret(secret, IsCompressed).ToString().c_str(), strTime.c_str(), strAddr.c_str());
-            } else {
-                CSecret secret = key.GetSecret(IsCompressed);
-                file << strprintf("%s %s change=1 # addr=%s\n", CBitcoinSecret(secret, IsCompressed).ToString().c_str(), strTime.c_str(), strAddr.c_str());
+        if(keyType.type() == typeid(CKeyID))
+        {
+            CKeyID keyid = boost::get<CKeyID>(keyType);
+            CKey key;
+            if (pwalletMain->GetKey(keyid, key)) {
+                if (pwalletMain->mapAddressBook.count(keyid)) {
+                    CSecret secret = key.GetSecret(IsCompressed);
+                    file << strprintf("%s %s label=%s # addr=%s\n", CBitcoinSecret(secret, IsCompressed).ToString().c_str(), strTime.c_str(), EncodeDumpString(pwalletMain->mapAddressBook[keyid]).c_str(), strAddr.c_str());
+                } else if (setKeyPool.count(keyid)) {
+                    CSecret secret = key.GetSecret(IsCompressed);
+                    file << strprintf("%s %s reserve=1 # addr=%s\n", CBitcoinSecret(secret, IsCompressed).ToString().c_str(), strTime.c_str(), strAddr.c_str());
+                } else {
+                    CSecret secret = key.GetSecret(IsCompressed);
+                    file << strprintf("%s %s change=1 # addr=%s\n", CBitcoinSecret(secret, IsCompressed).ToString().c_str(), strTime.c_str(), strAddr.c_str());
+                }
+            }
+        }
+        else if(keyType.type() == typeid(CKeyExchangeID))
+        {
+            CKeyExchangeID keyid = boost::get<CKeyExchangeID>(keyType);
+            CKeyExchange key;
+            if (pwalletMain->GetKey(keyid, key)) {
+                if (pwalletMain->mapAddressBook.count(keyid)) {
+                    CSecret secret = key.GetSecret(IsCompressed);
+                    file << strprintf("%s %s label=%s # addr=%s\n", CBitcoinSecret(secret, IsCompressed).ToString().c_str(), strTime.c_str(), EncodeDumpString(pwalletMain->mapAddressBook[keyid]).c_str(), strAddr.c_str());
+                } else if (setKeyPool.count(keyid)) {
+                    CSecret secret = key.GetSecret(IsCompressed);
+                    file << strprintf("%s %s reserve=1 # addr=%s\n", CBitcoinSecret(secret, IsCompressed).ToString().c_str(), strTime.c_str(), strAddr.c_str());
+                } else {
+                    CSecret secret = key.GetSecret(IsCompressed);
+                    file << strprintf("%s %s change=1 # addr=%s\n", CBitcoinSecret(secret, IsCompressed).ToString().c_str(), strTime.c_str(), strAddr.c_str());
+                }
             }
         }
     }

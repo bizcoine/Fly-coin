@@ -27,7 +27,8 @@ public:
     // Check whether a key corresponding to a given address is present in the store.
     virtual bool HaveKey(const CKeyID &address) const =0;
     virtual bool GetKey(const CKeyID &address, CKey& keyOut) const =0;
-    virtual void GetKeys(std::set<CKeyID> &setAddress) const =0;
+    virtual bool GetKey(const CKeyExchangeID &address, CKeyExchange& keyOut) const =0;
+    virtual void GetKeys(std::set<CKeyType> &setAddress) const =0;
     virtual bool GetPubKey(const CKeyID &address, CPubKey& vchPubKeyOut) const;
 
     // Support for BIP 0013 : see https://en.bitcoin.it/wiki/BIP_0013
@@ -67,7 +68,16 @@ public:
         }
         return result;
     }
-    void GetKeys(std::set<CKeyID> &setAddress) const
+    bool HaveKey(const CKeyExchangeID &address) const
+    {
+        bool result;
+        {
+            LOCK(cs_KeyStore);
+            result = (mapKeys.count(address) > 0);
+        }
+        return result;
+    }
+    void GetKeys(std::set<CKeyType> &setAddress) const
     {
         setAddress.clear();
         {
@@ -80,7 +90,21 @@ public:
             }
         }
     }
-    bool GetKey(const CKeyType &address, CKey &keyOut) const
+    bool GetKey(const CKeyID &address, CKey &keyOut) const
+    {
+        {
+            LOCK(cs_KeyStore);
+            KeyMap::const_iterator mi = mapKeys.find(address);
+            if (mi != mapKeys.end())
+            {
+                keyOut.Reset();
+                keyOut.SetSecret((*mi).second.first, (*mi).second.second);
+                return true;
+            }
+        }
+        return false;
+    }
+    bool GetKey(const CKeyExchangeID &address, CKeyExchange &keyOut) const
     {
         {
             LOCK(cs_KeyStore);
@@ -161,9 +185,10 @@ public:
         }
         return false;
     }
-    bool GetKey(const CKeyType &address, CKey& keyOut) const;
+    bool GetKey(const CKeyID &address, CKey& keyOut) const;
+    bool GetKey(const CKeyExchangeID &address, CKeyExchange& keyOut) const;
     bool GetPubKey(const CKeyID &address, CPubKey& vchPubKeyOut) const;
-    void GetKeys(std::set<CKeyID> &setAddress) const
+    void GetKeys(std::set<CKeyType> &setAddress) const
     {
         if (!IsCrypted())
         {
