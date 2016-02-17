@@ -79,8 +79,6 @@ class CPubKeyBase
 {
 public:
     std::vector<unsigned char> vchPubKey;
-    friend class CKeyBase;
-
 
     CPubKeyBase()
     {
@@ -162,11 +160,11 @@ typedef std::vector<unsigned char, secure_allocator<unsigned char> > CPrivKey;
 typedef std::vector<unsigned char, secure_allocator<unsigned char> > CSecret;
 
 
-/** The CKeyBase is the base for the CKey which is a normal address and
- * the CKeyExchange which is the second address type implemented - Griffith */
-class CKeyBase
+/** An encapsulated OpenSSL Elliptic Curve key (public and/or private) */
+class CKey
 {
 protected:
+    const bool exchangekey = false;
     EC_KEY* pkey;
     bool fSet;
     bool fCompressedPubKey;
@@ -176,12 +174,14 @@ public:
 
     void Reset();
 
-    CKeyBase();
-    CKeyBase(const CKeyBase& b);
+    CKey();
+    CKey(const CKey& b);
+    CPubKey GetPubKey() const;
 
-    CKeyBase& operator=(const CKeyBase& b);
+    ~CKey();
 
-    ~CKeyBase();
+    CKey& operator=(const CKey& b);
+
 
     bool IsNull() const;
     bool IsCompressed() const;
@@ -202,18 +202,6 @@ public:
     bool SetCompactSignature(uint256 hash, const std::vector<unsigned char>& vchSig);
 
     bool Verify(uint256 hash, const std::vector<unsigned char>& vchSig);
-};
-
-/** An encapsulated OpenSSL Elliptic Curve key (public and/or private) */
-class CKey : public CKeyBase
-{
-protected:
-    const bool exchangekey = false;
-
-public:
-    CKey();
-    CKey(const CKey& b);
-    CPubKey GetPubKey() const;
 
     // create a compact signature (65 bytes), which allows reconstructing the used public key
     // The format is one header byte, followed by two times 32 bytes for the serialized r and s values.
@@ -228,15 +216,45 @@ public:
 };
 
 /** An encapsulated OpenSSL Elliptic Curve key (public and/or private) for a secondary address type (Exchange address) - Griffith*/
-class CKeyExchange : public CKeyBase
+class CKeyExchange
 {
 protected:
     const bool exchangekey = true;
+    EC_KEY* pkey;
+    bool fSet;
+    bool fCompressedPubKey;
+    void SetCompressedPubKey();
 
 public:
     CKeyExchange();
     CKeyExchange(const CKeyExchange& b);
     CPubKeyExchange GetPubKeyExchange() const;
+
+    ~CKeyExchange();
+
+    CKeyExchange& operator=(const CKeyExchange& b);
+
+    void Reset();
+
+    bool IsNull() const;
+    bool IsCompressed() const;
+
+    void MakeNewKey(bool fCompressed);
+    bool SetPrivKey(const CPrivKey& vchPrivKey);
+    bool SetSecret(const CSecret& vchSecret, bool fCompressed = false);
+    CSecret GetSecret(bool &fCompressed) const;
+    CPrivKey GetPrivKey() const;
+    bool SetPubKey(const CPubKeyBase& vchPubKey);
+
+    bool Sign(uint256 hash, std::vector<unsigned char>& vchSig);
+
+    // reconstruct public key from a compact signature
+    // This is only slightly more CPU intensive than just verifying it.
+    // If this function succeeds, the recovered public key is guaranteed to be valid
+    // (the signature is a valid signature of the given data for that key)
+    bool SetCompactSignature(uint256 hash, const std::vector<unsigned char>& vchSig);
+
+    bool Verify(uint256 hash, const std::vector<unsigned char>& vchSig);
 
     // create a compact signature (65 bytes), which allows reconstructing the used public key
     // The format is one header byte, followed by two times 32 bytes for the serialized r and s values.
