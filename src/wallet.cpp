@@ -1294,6 +1294,8 @@ bool CWallet::MultiSend()
 				int64_t nFeeRet = 0;
 				vector<pair<CScript, int64_t> > vecSend;
 					
+                bool Exchange = false;
+
 				// loop through multisend vector and add amounts and addresses to the sending vector
 				for(unsigned int i = 0; i < vMultiSend.size(); i++)
 				{
@@ -1303,12 +1305,16 @@ bool CWallet::MultiSend()
 					CScript scriptPubKey;
 						scriptPubKey.SetDestination(strAddSend.Get());
 					vecSend.push_back(make_pair(scriptPubKey, nAmount));
+                    if(strAddSend.IsKeyExchange() == true)
+                    {
+                        Exchange = true;
+                    }
 				}
 				//make sure splitblock is off
 				fSplitBlock = false;
-				
+				                
 				// Create the transaction and commit it to the network
-				bool fCreated = CreateTransaction(vecSend, wtx, keyChange, nFeeRet, 1, cControl);
+                bool fCreated = CreateTransaction(vecSend, wtx, keyChange, nFeeRet, 1, Exchange, cControl);
 				if (!fCreated)
 					printf("MultiSend createtransaction failed");
 				if(!CommitTransaction(wtx, keyChange))
@@ -2605,7 +2611,7 @@ string CWallet::SendMoneyToDestination(const CTxDestination& address, int64_t nV
     CScript scriptPubKey;
     scriptPubKey.SetDestination(address);
 
-    return SendMoney(scriptPubKey, nValue, wtxNew, fAskFee, fAllowStakeForCharity);
+    return SendMoney(scriptPubKey, nValue, wtxNew, Exchange, fAskFee, fAllowStakeForCharity);
 }
 
 

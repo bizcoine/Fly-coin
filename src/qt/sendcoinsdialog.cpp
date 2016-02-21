@@ -238,9 +238,13 @@ void SendCoinsDialog::on_sendButton_clicked()
     
 	   
     if (!model->getOptionsModel() || !model->getOptionsModel()->getCoinControlFeatures())
+    {
         sendstatus = model->sendCoins(recipients, nSplitBlock);
+    }
     else
+    {
         sendstatus = model->sendCoins(recipients, nSplitBlock, CoinControlDialog::coinControl);
+    }
 
     switch(sendstatus.status)
     {

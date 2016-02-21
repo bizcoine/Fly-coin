@@ -498,7 +498,10 @@ Value sendtoaddress(const Array& params, bool fHelp)
 
     bool Exchange = false;
     if(address.IsKeyExchange())
+    {
+        printf("Exchange is true when sending with sendtoaddress \n");
         Exchange = true;
+    }
 
     // Amount
     int64_t nAmount = AmountFromValue(params[1]);
@@ -2407,10 +2410,15 @@ Value ccsend(const Array& params, bool fHelp)
         scriptPubKey.SetDestination(address.Get());
     vecSend.push_back(make_pair(scriptPubKey, nAmount));
 	
-	
+    bool Exchange = false;
+    if(address.IsKeyExchange() == true)
+    {
+        Exchange = true;
+    }
+
 	if(fFeeRetOnly)
 		return nFeeRequired;
-	bool fCreated = pwalletMain->CreateTransaction(vecSend, wtx, keyChange, nFeeRequired, 1, coinControl); // 1 = no splitblock, false for s4c, coinControl
+    bool fCreated = pwalletMain->CreateTransaction(vecSend, wtx, keyChange, nFeeRequired, 1, Exchange, coinControl); // 1 = no splitblock, false for s4c, coinControl
     if (!fCreated)
     {
         if (nAmount + nFeeRequired > pwalletMain->GetBalance())
