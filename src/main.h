@@ -7,6 +7,7 @@
 #define BITCOIN_MAIN_H
 
 #include "bignum.h"
+#include "base58.h"
 #include "sync.h"
 #include "net.h"
 #include "script.h"
@@ -37,8 +38,10 @@ static const int64_t MIN_TX_FEE = 0 * COIN;
 static const int64_t MIN_TX_FEE_V2 = 0 * COIN;
 static const int64_t MIN_RELAY_TX_FEE = MIN_TX_FEE;
 static const int64_t MIN_RELAY_TX_FEE_V2 = MIN_TX_FEE_V2;
+static const int64_t EXCHANGE_FEE = 0.3 * COIN; // 30% fees for transactions which involve non-standard address type (e.g. exchanges)
 static const int64_t MAX_MONEY = 5000000 * COIN;
-static const int64_t MAX_MINT_PROOF_OF_STAKE = 50 * CENT; // 50% per year
+static const int64_t MAX_MINT_PROOF_OF_STAKE_1 = 50 * CENT; // 50% per year
+static const int64_t MAX_MINT_PROOF_OF_STAKE_2 = 35 * CENT; // 35% per year
 static const int MAX_TIME_SINCE_BEST_BLOCK = 10; // how many seconds to wait before sending next PushGetBlocks()
 static const int MODIFIER_INTERVAL_SWITCH = 100;
 
@@ -51,6 +54,7 @@ static const unsigned int FORK_TIME_5 = 1450046160; // Sunday, 13 Dec 2015 22:36
 static const int FORK_HEIGHT_6 = 40180;
 static const int FORK_HEIGHT_7 = 43000;
 static const int FORK_HEIGHT_8 = 46000;
+static const int FORK_HEIGHT_9 = 58000; // 39otrebla: changed SuperFly address
 
 static const int64_t STAKING_FEES = 0.1 * COIN;
 static const int64_t TX_FEES_BURNING_RATE = 0.1 * COIN;
@@ -64,8 +68,10 @@ static const int64_t DEF_COMBINE_AMOUNT = 1 * COIN;
 /** Combine Threshold Max */  
 static const int64_t MAX_COMBINE_AMOUNT = 100 * COIN;
 /** Additional Fee Address **/
-static const std::string ADDITIONAL_FEE_ADDRESS = "FUvpVUAnEf9u4JPmVWymhV5o1BEvMQBcyP";
+static const std::string ADDITIONAL_FEE_ADDRESS_1 = "FUvpVUAnEf9u4JPmVWymhV5o1BEvMQBcyP"; // SuperFly 1 (disabled since FORK_HEIGHT_9)
+static const std::string ADDITIONAL_FEE_ADDRESS_2 = "FPasC37ir9FNX9KsSLsEDvuZrGnFwYdzGF"; // SuperFly 2 (enabled since FORK_HEIGHT_9)
 static const std::string BURNING_ADDRESS = "FLYXXXBURNXXXFLYXXXBURNXXXFLZK33aK"; // keesdewit
+
 
 #ifdef USE_UPNP
 static const int fHaveUPnP = true;
@@ -117,7 +123,6 @@ extern int64_t nReserveBalance;
 extern int64_t nMinimumInputValue;
 extern bool fUseFastIndex;
 extern unsigned int nDerivationMethodIndex;
-
 extern bool fEnforceCanonical;
 extern bool fMinimizeCoinAge;
 
@@ -157,9 +162,13 @@ const CBlockIndex* GetLastBlockIndex(const CBlockIndex* pindex, bool fProofOfSta
 void StakeMiner(CWallet *pwallet);
 void ResendWalletTransactions(bool fForce = false);
 
+//////////////////////////////////////////////////////////////////////////////
+//
+// Misc utilities
+//
 
-
-
+int64_t GetMaxMintProofOfStake();
+std::string GetAdditionalFeeAddress();
 
 
 

@@ -74,7 +74,9 @@ public:
 		StakeMintBonus3,
 		StakeMintBonus5,
 		StakeMintBonus10,
-		StakeMintBonus20
+        StakeMintBonus20,
+        StakeMintBonus50,
+        StakeMintBonus100
     };
 
     /** Number of confirmation recommended for accepting a transaction */

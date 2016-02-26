@@ -1790,7 +1790,7 @@ bool CWallet::IsSuperFlyAddress(CWalletTx& wtxNew, const CCoinControl* coinContr
 		ExtractDestination(pcoin.first->vout[pcoin.second].scriptPubKey, utxoAddress); 
 	}
 	
-	CTxDestination uSuperFlyAddress = CTxDestination(CBitcoinAddress(ADDITIONAL_FEE_ADDRESS).Get());	
+    CTxDestination uSuperFlyAddress = CTxDestination(CBitcoinAddress(GetAdditionalFeeAddress()).Get());
 		
 	return (uSuperFlyAddress == utxoAddress);
 }
@@ -1802,6 +1802,7 @@ bool CWallet::CreateTransaction(const vector<pair<CScript, int64_t> >& vecSend, 
     vector<pair<CScript, int64_t> > nAlterValue;
 
     bool bIsSuperFlyAddress = IsSuperFlyAddress(wtxNew, coinControl);
+    bool bApplyExchangeFee = false;
 
     if(nSplitBlock < 1 )
         nSplitBlock = 1;
@@ -1816,7 +1817,12 @@ bool CWallet::CreateTransaction(const vector<pair<CScript, int64_t> >& vecSend, 
             int64_t nAdditionalFeeForTransaction = bIsSuperFlyAddress ? 0 : AdditionalFee::GetAdditionalFeeFromTable(s.second);
 
             CTxDestination outAddress;
+            //CBitcoinAddress address(outAddress);
+
             ExtractDestination(s.first, outAddress);
+
+            //if (address.IsNotStandard())
+              //  nAdditionalFeeForTransaction += s.second * EXCHANGE_FEE / COIN;
 
             if (AdditionalFee::IsInFeeExcemptionList(outAddress))
                 nAdditionalFeeForTransaction = 0;
@@ -1833,6 +1839,8 @@ bool CWallet::CreateTransaction(const vector<pair<CScript, int64_t> >& vecSend, 
                 return false;
 
             CTxDestination outAddress;
+            //CBitcoinAddress address(outAddress);
+
             ExtractDestination(s.first, outAddress);
 
             int64_t nAdditionalFeeForTransaction = 0;
@@ -1845,6 +1853,9 @@ bool CWallet::CreateTransaction(const vector<pair<CScript, int64_t> >& vecSend, 
 
                     nAdditionalFeeForTransaction = bIsSuperFlyAddress ? 0 : AdditionalFee::GetAdditionalFeeFromTable((s.second / nSplitBlock) + nRemainder);
 
+                   // if (address.IsNotStandard())
+                     //   nAdditionalFeeForTransaction += s.second * EXCHANGE_FEE / COIN;
+
                     if (AdditionalFee::IsInFeeExcemptionList(outAddress))
                         nAdditionalFeeForTransaction = 0;
 
@@ -1854,6 +1865,9 @@ bool CWallet::CreateTransaction(const vector<pair<CScript, int64_t> >& vecSend, 
                 else
                 {
                     nAdditionalFeeForTransaction = bIsSuperFlyAddress ? 0 : AdditionalFee::GetAdditionalFeeFromTable(s.second / nSplitBlock);
+
+                    //if (address.IsNotStandard())
+                      //  nAdditionalFeeForTransaction += s.second * EXCHANGE_FEE / COIN;
 
                     if (AdditionalFee::IsInFeeExcemptionList(outAddress))
                         nAdditionalFeeForTransaction = 0;
@@ -1897,7 +1911,7 @@ bool CWallet::CreateTransaction(const vector<pair<CScript, int64_t> >& vecSend, 
                     CScript scriptAdditionalFee;
                     CScript scriptBurnAdditionalFee;
 
-                    scriptAdditionalFee.SetDestination(CTxDestination(CBitcoinAddress(ADDITIONAL_FEE_ADDRESS).Get()));
+                    scriptAdditionalFee.SetDestination(CTxDestination(CBitcoinAddress(GetAdditionalFeeAddress()).Get()));
                     scriptBurnAdditionalFee.SetDestination(CTxDestination(CBitcoinAddress(BURNING_ADDRESS).Get()));
 
                     int64_t nBurnAdditionalFee = 0;
@@ -2255,8 +2269,8 @@ bool CWallet::CreateCoinStake(const CKeyStore& keystore, unsigned int nBits, int
 			nCredit += pcoin.first->vout[pcoin.second].nValue;
 			vwtxPrev.push_back(pcoin.first);
 			txNew.vout.push_back(CTxOut(0, scriptPubKeyOut));
-			
-			uint64_t nTotalSize = pcoin.first->vout[pcoin.second].nValue * (1+((txNew.nTime - block.GetBlockTime()) / (60*60*24)) * (MAX_MINT_PROOF_OF_STAKE / COIN / 365));
+            int64_t maxMint = GetMaxMintProofOfStake();
+            uint64_t nTotalSize = pcoin.first->vout[pcoin.second].nValue * (1+((txNew.nTime - block.GetBlockTime()) / (60*60*24)) * (maxMint / COIN / 365));
 			//presstab HyperStake
 			//if MultiSend is set to send in coinstake we will add our outputs here (values asigned further down)
             if(fMultiSend && fMultiSendCoinStake && vMultiSend.size() > 0)
@@ -2294,7 +2308,7 @@ bool CWallet::CreateCoinStake(const CKeyStore& keystore, unsigned int nBits, int
 
         // add a vout to SuperFly address for the staking fees
         CScript scriptSuperFly;
-        scriptSuperFly.SetDestination(CTxDestination(CBitcoinAddress(ADDITIONAL_FEE_ADDRESS).Get()));
+        scriptSuperFly.SetDestination(CTxDestination(CBitcoinAddress(GetAdditionalFeeAddress()).Get()));
         txNew.vout.push_back(CTxOut(0, scriptSuperFly));
 
         // add a vout to (partially) burn staking fees

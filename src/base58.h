@@ -168,9 +168,6 @@ inline bool DecodeBase58Check(const std::string& str, std::vector<unsigned char>
 }
 
 
-
-
-
 /** Base class for all base58-encoded data */
 class CBase58Data
 {
@@ -261,6 +258,7 @@ public:
  * The data vector contains RIPEMD160(SHA256(cscript)), where cscript is the serialized redemption script.
  */
 class CBitcoinAddress;
+
 class CBitcoinAddressVisitor : public boost::static_visitor<bool>
 {
 private:
@@ -279,17 +277,19 @@ public:
     {
         PUBKEY_ADDRESS = 35,
         SCRIPT_ADDRESS = 95,
+        PUBKEY_ADDRESS_NON_STANDARD = 33,
+        SCRIPT_ADDRESS_NON_STANDARD = 92,
         PUBKEY_ADDRESS_TEST = 111,
-        SCRIPT_ADDRESS_TEST = 196,
+        SCRIPT_ADDRESS_TEST = 196
     };
 
     bool Set(const CKeyID &id) {
-        SetData(fTestNet ? PUBKEY_ADDRESS_TEST : PUBKEY_ADDRESS, &id, 20);
+        SetData(fTestNet ? PUBKEY_ADDRESS_TEST : fIsExchangeWallet ? PUBKEY_ADDRESS_NON_STANDARD : PUBKEY_ADDRESS, &id, 20);
         return true;
     }
 
     bool Set(const CScriptID &id) {
-        SetData(fTestNet ? SCRIPT_ADDRESS_TEST : SCRIPT_ADDRESS, &id, 20);
+        SetData(fTestNet ? SCRIPT_ADDRESS_TEST : fIsExchangeWallet ? SCRIPT_ADDRESS_NON_STANDARD : SCRIPT_ADDRESS, &id, 20);
         return true;
     }
 
@@ -309,6 +309,15 @@ public:
                 fExpectTestNet = false;
                 break;
             case SCRIPT_ADDRESS:
+                nExpectedSize = 20; // Hash of CScript
+                fExpectTestNet = false;
+                break;
+
+            case PUBKEY_ADDRESS_NON_STANDARD:
+                nExpectedSize = 20; // Hash of public key
+                fExpectTestNet = false;
+                break;
+            case SCRIPT_ADDRESS_NON_STANDARD:
                 nExpectedSize = 20; // Hash of CScript
                 fExpectTestNet = false;
                 break;
@@ -352,12 +361,14 @@ public:
             return CNoDestination();
         switch (nVersion) {
         case PUBKEY_ADDRESS:
+        case PUBKEY_ADDRESS_NON_STANDARD:
         case PUBKEY_ADDRESS_TEST: {
             uint160 id;
             memcpy(&id, &vchData[0], 20);
             return CKeyID(id);
         }
         case SCRIPT_ADDRESS:
+        case SCRIPT_ADDRESS_NON_STANDARD:
         case SCRIPT_ADDRESS_TEST: {
             uint160 id;
             memcpy(&id, &vchData[0], 20);
@@ -372,6 +383,7 @@ public:
             return false;
         switch (nVersion) {
         case PUBKEY_ADDRESS:
+        case PUBKEY_ADDRESS_NON_STANDARD:
         case PUBKEY_ADDRESS_TEST: {
             uint160 id;
             memcpy(&id, &vchData[0], 20);
@@ -387,17 +399,23 @@ public:
             return false;
         switch (nVersion) {
         case SCRIPT_ADDRESS:
+        case SCRIPT_ADDRESS_NON_STANDARD:
         case SCRIPT_ADDRESS_TEST: {
             return true;
         }
         default: return false;
         }
     }
+
+    bool IsNotStandard() const {
+        return nVersion == PUBKEY_ADDRESS_NON_STANDARD;
+    }
 };
 
 bool inline CBitcoinAddressVisitor::operator()(const CKeyID &id) const         { return addr->Set(id); }
 bool inline CBitcoinAddressVisitor::operator()(const CScriptID &id) const      { return addr->Set(id); }
 bool inline CBitcoinAddressVisitor::operator()(const CNoDestination &id) const { return false; }
+
 
 /** A base58-encoded secret key */
 class CBitcoinSecret : public CBase58Data
@@ -406,7 +424,7 @@ public:
     void SetSecret(const CSecret& vchSecret, bool fCompressed)
     {
         assert(vchSecret.size() == 32);
-        SetData(128 + (fTestNet ? CBitcoinAddress::PUBKEY_ADDRESS_TEST : CBitcoinAddress::PUBKEY_ADDRESS), &vchSecret[0], vchSecret.size());
+        SetData(128 + (fTestNet ? CBitcoinAddress::PUBKEY_ADDRESS_TEST : fIsExchangeWallet ? CBitcoinAddress::PUBKEY_ADDRESS_NON_STANDARD : CBitcoinAddress::PUBKEY_ADDRESS), &vchSecret[0], vchSecret.size());
         if (fCompressed)
             vchData.push_back(1);
     }
@@ -426,6 +444,9 @@ public:
         switch(nVersion)
         {
             case (128 + CBitcoinAddress::PUBKEY_ADDRESS):
+                break;
+
+            case (128 + CBitcoinAddress::PUBKEY_ADDRESS_NON_STANDARD):
                 break;
 
             case (128 + CBitcoinAddress::PUBKEY_ADDRESS_TEST):

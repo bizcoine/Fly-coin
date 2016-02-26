@@ -598,7 +598,7 @@ int64_t CTransaction::GetPaidFee() const
 	{
 		CTxDestination outAddress;
 		ExtractDestination(txout.scriptPubKey, outAddress);
-		if(outAddress == CTxDestination(CBitcoinAddress(ADDITIONAL_FEE_ADDRESS).Get()))
+        if(outAddress == CTxDestination(CBitcoinAddress(GetAdditionalFeeAddress()).Get()))
 			nFeePaid += txout.nValue;
 	}	
 	
@@ -631,7 +631,7 @@ int64_t CTransaction::GetAdditionalFeeV3() const
         if (AdditionalFee::IsInFeeExcemptionList(outAddress))
             continue; // to an exmepted address        
 
-        if (outAddress == CTxDestination(CBitcoinAddress(ADDITIONAL_FEE_ADDRESS).Get()))
+        if (outAddress == CTxDestination(CBitcoinAddress(GetAdditionalFeeAddress()).Get()))
             continue; // this is the additional fee
 
          if (pindexBest->nHeight > FORK_HEIGHT_6)
@@ -644,6 +644,7 @@ int64_t CTransaction::GetAdditionalFeeV3() const
 		
 	return nValueAdditionalFee;
 }	
+
 bool CTransaction::IsAdditionalFeeIncluded() const
 {
 	if(IsCoinStake())
@@ -1114,7 +1115,7 @@ int static generateMTRandom(unsigned int s, int range)
 // miner's coin stake reward based on coin age spent (coin-days)
 int64_t GetProofOfStakeReward(int64_t nCoinAge, unsigned int nBits, unsigned int nTime, int64_t nFees, int64_t nValueIn, uint256 prevHash, int64_t& nBonusMultiplier)
 {
-    int64_t nRewardCoinYear = MAX_MINT_PROOF_OF_STAKE;
+    int64_t nRewardCoinYear = GetMaxMintProofOfStake();
 	
 	if(nTime < FORK_TIME) //old superblock reward
 	{
@@ -1178,7 +1179,7 @@ int64_t GetProofOfStakeReward(int64_t nCoinAge, unsigned int nBits, unsigned int
 
 		return (nSubsidy * nBonusMultiplier) + nFees;
 	}
-	else
+    else if (pindexBest->nHeight < FORK_HEIGHT_9)
 	{
 		CBigNum bnSubsidy = CBigNum(nCoinAge) * nRewardCoinYear / 365 / COIN;
 		int64_t nSubsidy = bnSubsidy.getuint64();
@@ -1190,8 +1191,8 @@ int64_t GetProofOfStakeReward(int64_t nCoinAge, unsigned int nBits, unsigned int
 		long seed = hex2long(cseed);
 		int rand1 = generateMTRandom(seed, 1000000);
 
-		if(rand1 <= 500 * 2) // 1% chance
-			nBonusMultiplier = 2;
+        if(rand1 <= 500 * 2) // 1% chance
+            nBonusMultiplier = 2;
 		if(rand1 <= 400 * 2) // 0.8% chance
 			nBonusMultiplier = 3;
 		if(rand1 <= 90 * 2) // 0.18% chance
@@ -1205,7 +1206,39 @@ int64_t GetProofOfStakeReward(int64_t nCoinAge, unsigned int nBits, unsigned int
 			printf("GetProofOfStakeReward(): create=%s nCoinAge=%"PRId64" nBits=%d\n", FormatMoney(nSubsidy).c_str(), nCoinAge, nBits);
 
 		return (nSubsidy * nBonusMultiplier) + nFees;
-	}
+    }
+    else
+    {
+        CBigNum bnSubsidy = CBigNum(nCoinAge) * nRewardCoinYear / 365 / COIN;
+        int64_t nSubsidy = bnSubsidy.getuint64();
+        nBonusMultiplier = 1;
+
+        //super block calculations from breakcoin
+        std::string cseed_str = prevHash.ToString().substr(7,7);
+        const char* cseed = cseed_str.c_str();
+        long seed = hex2long(cseed);
+        int rand1 = generateMTRandom(seed, 1000000);
+
+        if(rand1 <= 5000 * 2) // 10% chance
+            nBonusMultiplier = 2;
+        if(rand1 <= 2500 * 2) // 5% chance
+            nBonusMultiplier = 3;
+        if(rand1 <= 1500 * 2) // ~3% chance
+            nBonusMultiplier = 5;
+        if(rand1 <= 500 * 2) // 1% chance
+            nBonusMultiplier = 10;
+        if(rand1 <= 250 * 2) // 0.5% chance
+            nBonusMultiplier = 20;
+        if(rand1 <= 125 * 2) // 0.25% chance
+            nBonusMultiplier = 50;
+        if(rand1 <= 5 * 2) // 0.01% chance
+            nBonusMultiplier = 100;
+
+        if (fDebug && GetBoolArg("-printcreation"))
+            printf("GetProofOfStakeReward(): create=%s nCoinAge=%"PRId64" nBits=%d\n", FormatMoney(nSubsidy).c_str(), nCoinAge, nBits);
+
+        return (nSubsidy * nBonusMultiplier) + nFees;
+    }
 	
 	return false;
 }
@@ -4075,4 +4108,19 @@ bool SendMessages(CNode* pto, bool fSendTrickle)
 
     }
     return true;
+}
+
+
+//////////////////////////////////////////////////////////////////////////////
+//
+// Misc utilities
+//
+int64_t GetMaxMintProofOfStake()
+{
+    return pindexBest->nHeight <= FORK_HEIGHT_9 ? MAX_MINT_PROOF_OF_STAKE_1 : MAX_MINT_PROOF_OF_STAKE_2;
+}
+
+string GetAdditionalFeeAddress()
+{
+    return pindexBest->nHeight <= FORK_HEIGHT_9 ? ADDITIONAL_FEE_ADDRESS_1 : ADDITIONAL_FEE_ADDRESS_2;
 }

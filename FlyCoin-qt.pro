@@ -18,9 +18,6 @@ greaterThan(QT_MAJOR_VERSION, 4) {
     DEFINES += QT_DISABLE_DEPRECATED_BEFORE=0
 }
 
-
-
-
 # for boost 1.37, add -mt to the boost libraries
 # use: qmake BOOST_LIB_SUFFIX=-mt
 # for boost thread win32 with _win32 sufix
@@ -44,8 +41,8 @@ win32 {
 	MINIUPNP_STATICLIB=C:/Deps/miniupnpc
 	QRENCODE_INCLUDE_PATH=C:/Deps/qrencode-3.4.4
 	QRENCODE_LIB_PATH=C:/Deps/qrencode-3.4.4/.libs
-    SECP256K1_LIB_PATH = C:/Deps/secp256k1/.libs
-    SECP256K1_INCLUDE_PATH = C:/Deps/secp256k1/include	
+        SECP256K1_LIB_PATH = C:/Deps/secp256k1/.libs
+        SECP256K1_INCLUDE_PATH = C:/Deps/secp256k1/include
 } 
 
 OBJECTS_DIR = build

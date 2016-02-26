@@ -76,7 +76,8 @@ TransactionView::TransactionView(QWidget *parent) :
     typeWidget->addItem(tr("To yourself"), TransactionFilterProxy::TYPE(TransactionRecord::SendToSelf));
     typeWidget->addItem(tr("Minted"), TransactionFilterProxy::TYPE(TransactionRecord::StakeMint));
 	typeWidget->addItem(tr("SuperBlock Mint"), TransactionFilterProxy::TYPE(TransactionRecord::StakeMintBonus2) || TransactionFilterProxy::TYPE(TransactionRecord::StakeMintBonus3) || TransactionFilterProxy::TYPE(TransactionRecord::StakeMintBonus5)
-		|| TransactionFilterProxy::TYPE(TransactionRecord::StakeMintBonus10) || TransactionFilterProxy::TYPE(TransactionRecord::StakeMintBonus20));
+        || TransactionFilterProxy::TYPE(TransactionRecord::StakeMintBonus10) || TransactionFilterProxy::TYPE(TransactionRecord::StakeMintBonus20)
+                        || TransactionFilterProxy::TYPE(TransactionRecord::StakeMintBonus50) || TransactionFilterProxy::TYPE(TransactionRecord::StakeMintBonus100));
     typeWidget->addItem(tr("Other"), TransactionFilterProxy::TYPE(TransactionRecord::Other));
 
     hlayout->addWidget(typeWidget);
