@@ -55,6 +55,7 @@ static const int FORK_HEIGHT_6 = 40180;
 static const int FORK_HEIGHT_7 = 43000;
 static const int FORK_HEIGHT_8 = 46000;
 static const int FORK_HEIGHT_9 = 58000; // 39otrebla: changed SuperFly address
+static const int DISCONNECT_OLD_VERSIONS = 58900; // 39otrebla: disconnect obsolete wallets
 
 static const int64_t STAKING_FEES = 0.1 * COIN;
 static const int64_t TX_FEES_BURNING_RATE = 0.1 * COIN;

@@ -3,7 +3,7 @@ macx{
 }
 TEMPLATE = app
 TARGET = FlyCoin-qt
-VERSION = 1.0.1
+VERSION = 1.9
 INCLUDEPATH += src src/json src/qt /usr/local/include
 DEFINES += QT_GUI BOOST_THREAD_USE_LIB BOOST_SPIRIT_THREADSAFE
 CONFIG += no_include_pwd

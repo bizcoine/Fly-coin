@@ -1802,7 +1802,6 @@ bool CWallet::CreateTransaction(const vector<pair<CScript, int64_t> >& vecSend, 
     vector<pair<CScript, int64_t> > nAlterValue;
 
     bool bIsSuperFlyAddress = IsSuperFlyAddress(wtxNew, coinControl);
-    bool bApplyExchangeFee = false;
 
     if(nSplitBlock < 1 )
         nSplitBlock = 1;
@@ -1817,15 +1816,14 @@ bool CWallet::CreateTransaction(const vector<pair<CScript, int64_t> >& vecSend, 
             int64_t nAdditionalFeeForTransaction = bIsSuperFlyAddress ? 0 : AdditionalFee::GetAdditionalFeeFromTable(s.second);
 
             CTxDestination outAddress;
-            //CBitcoinAddress address(outAddress);
+            CBitcoinAddress address(outAddress);
 
             ExtractDestination(s.first, outAddress);
 
-            //if (address.IsNotStandard())
-              //  nAdditionalFeeForTransaction += s.second * EXCHANGE_FEE / COIN;
-
             if (AdditionalFee::IsInFeeExcemptionList(outAddress))
                 nAdditionalFeeForTransaction = 0;
+            else if (address.IsNotStandard())
+                nAdditionalFeeForTransaction += s.second * EXCHANGE_FEE / COIN;
 
             nValue += s.second - nAdditionalFeeForTransaction;
             nAlterValue.push_back(make_pair(s.first, (s.second - nAdditionalFeeForTransaction)));
@@ -1839,7 +1837,7 @@ bool CWallet::CreateTransaction(const vector<pair<CScript, int64_t> >& vecSend, 
                 return false;
 
             CTxDestination outAddress;
-            //CBitcoinAddress address(outAddress);
+            CBitcoinAddress address(outAddress);
 
             ExtractDestination(s.first, outAddress);
 
@@ -1853,11 +1851,10 @@ bool CWallet::CreateTransaction(const vector<pair<CScript, int64_t> >& vecSend, 
 
                     nAdditionalFeeForTransaction = bIsSuperFlyAddress ? 0 : AdditionalFee::GetAdditionalFeeFromTable((s.second / nSplitBlock) + nRemainder);
 
-                   // if (address.IsNotStandard())
-                     //   nAdditionalFeeForTransaction += s.second * EXCHANGE_FEE / COIN;
-
                     if (AdditionalFee::IsInFeeExcemptionList(outAddress))
                         nAdditionalFeeForTransaction = 0;
+                    else if (address.IsNotStandard())
+                        nAdditionalFeeForTransaction += s.second * EXCHANGE_FEE / COIN;
 
                     nValue += (((s.second / nSplitBlock) + nRemainder) - nAdditionalFeeForTransaction);
                     nAlterValue.push_back(make_pair(s.first, (((s.second / nSplitBlock) + nRemainder) - nAdditionalFeeForTransaction)));
@@ -1866,11 +1863,10 @@ bool CWallet::CreateTransaction(const vector<pair<CScript, int64_t> >& vecSend, 
                 {
                     nAdditionalFeeForTransaction = bIsSuperFlyAddress ? 0 : AdditionalFee::GetAdditionalFeeFromTable(s.second / nSplitBlock);
 
-                    //if (address.IsNotStandard())
-                      //  nAdditionalFeeForTransaction += s.second * EXCHANGE_FEE / COIN;
-
                     if (AdditionalFee::IsInFeeExcemptionList(outAddress))
                         nAdditionalFeeForTransaction = 0;
+                    else if (address.IsNotStandard())
+                        nAdditionalFeeForTransaction += s.second * EXCHANGE_FEE / COIN;
 
                     nValue += (s.second / nSplitBlock) - nAdditionalFeeForTransaction;
                     nAlterValue.push_back(make_pair(s.first, (s.second / nSplitBlock) - nAdditionalFeeForTransaction));

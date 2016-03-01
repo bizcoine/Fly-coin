@@ -638,6 +638,7 @@ int64_t CTransaction::GetAdditionalFeeV3() const
              if (outAddress == CTxDestination(CBitcoinAddress(BURNING_ADDRESS).Get()))
                  continue; // this is the burn address
 
+
         // this one can be only the actual tx out (neither the change nor the additional fee)
         nValueAdditionalFee += AdditionalFee::GetAdditionalFeeFromTable(txout.nValue);
 	}
@@ -2821,7 +2822,7 @@ bool LoadBlockIndex(bool fAllowNew)
         block.nVersion = 1;
         block.nTime    = 1441657188; // Mon, 07 Sep 2015 20:19:48 GMT
         block.nBits    = bnProofOfWorkLimit.GetCompact();
-        block.nNonce   = 0;
+        block.nNonce   = 751708;
         if(fTestNet)
         {
             block.nNonce   = 0;
@@ -3157,6 +3158,7 @@ bool static ProcessMessage(CNode* pfrom, string strCommand, CDataStream& vRecv)
         CAddress addrFrom;
         uint64_t nNonce = 1;
         vRecv >> pfrom->nVersion >> pfrom->nServices >> nTime >> addrMe;
+
         if (pfrom->nVersion < (GetAdjustedTime() > FORK_TIME_2 ? MIN_PROTO_VERSION_FORK_2 : MIN_PROTO_VERSION_FORK))
         {
             // Since February 20, 2012, the protocol is initiated at version 209,
@@ -3188,7 +3190,14 @@ bool static ProcessMessage(CNode* pfrom, string strCommand, CDataStream& vRecv)
             printf("partner %s using obsolete version %i; disconnecting\n", pfrom->addr.ToString().c_str(), pfrom->nVersion);
             pfrom->fDisconnect = true;
             return false;
-        }		
+        }
+
+        if (pindexBest->nHeight >= DISCONNECT_OLD_VERSIONS && pfrom->nVersion < 60070)
+        {
+            printf("partner %s using obsolete version %i; disconnecting\n", pfrom->addr.ToString().c_str(), pfrom->nVersion);
+            pfrom->fDisconnect = true;
+            return false;
+        }
 
         if (pfrom->nVersion == 10300)
             pfrom->nVersion = 300;

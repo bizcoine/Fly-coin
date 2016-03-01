@@ -30,12 +30,13 @@ static const int DATABASE_VERSION = 70508;
 // network protocol versioning
 //
 
-static const int PROTOCOL_VERSION = 60060;
+static const int PROTOCOL_VERSION = 60070;
 
 // earlier versions not supported as of Feb 2012, and are disconnected
 static const int MIN_PROTO_VERSION = 60020;
 static const int MIN_PROTO_VERSION_FORK = 60030;
 static const int MIN_PROTO_VERSION_FORK_2 = 60040;
+// 39otrebla: more min_proto_versions have been (badly) hardcoded in main.cpp:3181 and below
 
 // nTime field added to CAddress, starting with this version;
 // if possible, avoid requesting addresses nodes older than this
