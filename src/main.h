@@ -16,6 +16,7 @@
 #include <list>
 
 class CWallet;
+class CWalletTx;
 class CBlock;
 class CBlockIndex;
 class CKeyItem;
@@ -144,8 +145,6 @@ FILE* AppendBlockFile(unsigned int& nFileRet);
 bool LoadBlockIndex(bool fAllowNew=true);
 void PrintBlockTree();
 CBlockIndex* FindBlockByHeight(int nHeight);
-bool ProcessMessages(CNode* pfrom);
-bool SendMessages(CNode* pto, bool fSendTrickle);
 bool LoadExternalBlockFile(FILE* fileIn);
 
 bool CheckProofOfWork(uint256 hash, unsigned int nBits);
@@ -162,6 +161,17 @@ uint256 WantedByOrphan(const CBlock* pblockOrphan);
 const CBlockIndex* GetLastBlockIndex(const CBlockIndex* pindex, bool fProofOfStake);
 void StakeMiner(CWallet *pwallet);
 void ResendWalletTransactions(bool fForce = false);
+
+void Inventory(const uint256& hash);
+bool AddOrphanTx(const CTransaction& tx);
+void EraseOrphanTx(uint256 hash);
+unsigned int LimitOrphanTxSize(unsigned int nMaxOrphans);
+extern CMedianFilter<int> cPeerBlockCounts;
+uint256 GetOrphanRoot(const CBlock* pblock);
+extern std::map<uint256, CTransaction> mapOrphanTransactions;
+extern std::map<uint256, std::set<uint256> > mapOrphanTransactionsByPrev;
+bool GetTransaction(const uint256& hashTx, CWalletTx& wtx);
+
 
 //////////////////////////////////////////////////////////////////////////////
 //
