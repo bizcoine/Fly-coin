@@ -1180,7 +1180,7 @@ int64_t GetProofOfStakeReward(int64_t nCoinAge, unsigned int nBits, unsigned int
 
 		return (nSubsidy * nBonusMultiplier) + nFees;
 	}
-    else if (pindexBest->nHeight < FORK_HEIGHT_9)
+    else if (pindexBest->nHeight < FORK_HEIGHT_8)
 	{
 		CBigNum bnSubsidy = CBigNum(nCoinAge) * nRewardCoinYear / 365 / COIN;
 		int64_t nSubsidy = bnSubsidy.getuint64();
@@ -3095,10 +3095,10 @@ string GetWarnings(string strFor)
 //
 int64_t GetMaxMintProofOfStake()
 {
-    return pindexBest->nHeight <= FORK_HEIGHT_9 ? MAX_MINT_PROOF_OF_STAKE_1 : MAX_MINT_PROOF_OF_STAKE_2;
+    return pindexBest->nHeight <= FORK_HEIGHT_8 ? MAX_MINT_PROOF_OF_STAKE_1 : MAX_MINT_PROOF_OF_STAKE_2;
 }
 
 string GetAdditionalFeeAddress()
 {
-    return pindexBest->nHeight <= FORK_HEIGHT_9 ? ADDITIONAL_FEE_ADDRESS_1 : ADDITIONAL_FEE_ADDRESS_2;
+    return pindexBest->nHeight <= FORK_HEIGHT_8 ? ADDITIONAL_FEE_ADDRESS_1 : ADDITIONAL_FEE_ADDRESS_2;
 }
