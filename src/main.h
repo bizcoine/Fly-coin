@@ -16,6 +16,7 @@
 #include <list>
 
 class CWallet;
+class CWalletTx;
 class CBlock;
 class CBlockIndex;
 class CKeyItem;
@@ -53,9 +54,7 @@ static const unsigned int FORK_TIME_4 = 1448211600; // Sunday, 22 Nov 2015 17:00
 static const unsigned int FORK_TIME_5 = 1450046160; // Sunday, 13 Dec 2015 22:36:00 GMT //keesdewit
 static const int FORK_HEIGHT_6 = 40180;
 static const int FORK_HEIGHT_7 = 43000;
-static const int FORK_HEIGHT_8 = 46000;
-static const int FORK_HEIGHT_9 = 58000; // 39otrebla: changed SuperFly address
-static const int DISCONNECT_OLD_VERSIONS = 58900; // 39otrebla: disconnect obsolete wallets
+static const int FORK_HEIGHT_8 = 58000; // 39otrebla: changed SuperFly address
 
 static const int64_t STAKING_FEES = 0.1 * COIN;
 static const int64_t TX_FEES_BURNING_RATE = 0.1 * COIN;
@@ -144,8 +143,6 @@ FILE* AppendBlockFile(unsigned int& nFileRet);
 bool LoadBlockIndex(bool fAllowNew=true);
 void PrintBlockTree();
 CBlockIndex* FindBlockByHeight(int nHeight);
-bool ProcessMessages(CNode* pfrom);
-bool SendMessages(CNode* pto, bool fSendTrickle);
 bool LoadExternalBlockFile(FILE* fileIn);
 
 bool CheckProofOfWork(uint256 hash, unsigned int nBits);
@@ -162,6 +159,17 @@ uint256 WantedByOrphan(const CBlock* pblockOrphan);
 const CBlockIndex* GetLastBlockIndex(const CBlockIndex* pindex, bool fProofOfStake);
 void StakeMiner(CWallet *pwallet);
 void ResendWalletTransactions(bool fForce = false);
+
+void Inventory(const uint256& hash);
+bool AddOrphanTx(const CTransaction& tx);
+void EraseOrphanTx(uint256 hash);
+unsigned int LimitOrphanTxSize(unsigned int nMaxOrphans);
+extern CMedianFilter<int> cPeerBlockCounts;
+uint256 GetOrphanRoot(const CBlock* pblock);
+extern std::map<uint256, CTransaction> mapOrphanTransactions;
+extern std::map<uint256, std::set<uint256> > mapOrphanTransactionsByPrev;
+bool GetTransaction(const uint256& hashTx, CWalletTx& wtx);
+
 
 //////////////////////////////////////////////////////////////////////////////
 //
