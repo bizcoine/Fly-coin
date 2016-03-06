@@ -46,8 +46,13 @@ int64_t GetAdditionalFeeFromTableV2(int64_t additionalValue)
 	return (additionalValueInternal * 0.55) * COIN;			
 }
    
-int64_t AdditionalFee::GetAdditionalFeeFromTable(int64_t additionalValue) //keesdewit
+int64_t AdditionalFee::GetAdditionalFeeFromTable(int64_t additionalValue, bool Exchange) //keesdewit
 {
+    if(Exchange == false) // this should be false when not sending to an exchange and therefore should get a lower fee like a standard coin (but not free)
+    {
+        return 0;
+    }
+
 	if (pindexBest->nHeight >= FORK_HEIGHT_7)
 		return GetAdditionalFeeFromTableV2(additionalValue);
 	
