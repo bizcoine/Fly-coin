@@ -1541,6 +1541,7 @@ public:
     CKeyStoreIsMineVisitor(const CKeyStore *keystoreIn) : keystore(keystoreIn) { }
     bool operator()(const CNoDestination &dest) const { return false; }
     bool operator()(const CKeyID &keyID) const { return keystore->HaveKey(keyID); }
+    bool operator()(const CKeyExchangeID &keyExchangeID) const { return keystore->HaveKey(keyExchangeID); }
     bool operator()(const CScriptID &scriptID) const { return keystore->HaveCScript(scriptID); }
 };
 
@@ -1636,7 +1637,10 @@ public:
         if (keystore.HaveKey(keyId))
             vKeys.push_back(keyId);
     }
-
+    void operator()(const CKeyExchangeID &keyId) {
+        if (keystore.HaveKey(keyId))
+            vKeys.push_back(keyId);
+    }
     void operator()(const CScriptID &scriptId) {
         CScript script;
         if (keystore.GetCScript(scriptId, script))
@@ -1999,6 +2003,12 @@ public:
     bool operator()(const CKeyID &keyID) const {
         script->clear();
         *script << OP_DUP << OP_HASH160 << keyID << OP_EQUALVERIFY << OP_CHECKSIG;
+        return true;
+    }
+
+    bool operator()(const CKeyExchangeID &keyExchangeID) const {
+        script->clear();
+        *script << OP_DUP << OP_HASH160 << keyExchangeID << OP_EQUALVERIFY << OP_CHECKSIG;
         return true;
     }
 
