@@ -26,10 +26,14 @@ public:
 
     // Check whether a key corresponding to a given address is present in the store.
     virtual bool HaveKey(const CKeyID &address) const =0;
+    virtual bool HaveKey(const CKeyExchangeID &address) const =0;
     virtual bool GetKey(const CKeyID &address, CKey& keyOut) const =0;
     virtual bool GetKey(const CKeyExchangeID &address, CKeyExchange& keyOut) const =0;
-    virtual void GetKeys(std::set<CKeyType> &setAddress) const =0;
+    virtual void GetKeys(std::set<CKeyID> &setAddress) const =0;
+    virtual void GetKeys(std::set<CKeyExchangeID> &setAddress) const =0;
     virtual bool GetPubKey(const CKeyID &address, CPubKey& vchPubKeyOut) const;
+    virtual bool GetPubKey(const CKeyExchangeID &address, CPubKeyExchange& vchPubKeyOut) const;
+
 
     // Support for BIP 0013 : see https://en.bitcoin.it/wiki/BIP_0013
     virtual bool AddCScript(const CScript& redeemScript) =0;
@@ -46,14 +50,16 @@ public:
     }
 };
 
-typedef std::map<CKeyType, std::pair<CSecret, bool> > KeyMap;
+typedef std::map<CKeyID, std::pair<CSecret, bool> > RegKeyMap;
+typedef std::map<CKeyExchangeID, std::pair<CSecret, bool> > ExchangeKeyMap;
 typedef std::map<CScriptID, CScript > ScriptMap;
 
 /** Basic key store, that keeps keys in an address->secret map */
 class CBasicKeyStore : public CKeyStore
 {
 protected:
-    KeyMap mapKeys;
+    RegKeyMap mapKeys;
+    ExchangeKeyMap mapExchangeKeys;
     ScriptMap mapScripts;
 
 public:
@@ -73,17 +79,30 @@ public:
         bool result;
         {
             LOCK(cs_KeyStore);
-            result = (mapKeys.count(address) > 0);
+            result = (mapExchangeKeys.count(address) > 0);
         }
         return result;
     }
-    void GetKeys(std::set<CKeyType> &setAddress) const
+    void GetKeys(std::set<CKeyID> &setAddress) const
     {
         setAddress.clear();
         {
             LOCK(cs_KeyStore);
-            KeyMap::const_iterator mi = mapKeys.begin();
+            RegKeyMap::const_iterator mi = mapKeys.begin();
             while (mi != mapKeys.end())
+            {
+                setAddress.insert((*mi).first);
+                mi++;
+            }
+        }
+    }
+    void GetKeys(std::set<CKeyExchangeID> &setAddress) const
+    {
+        setAddress.clear();
+        {
+            LOCK(cs_KeyStore);
+            ExchangeKeyMap::const_iterator mi = mapExchangeKeys.begin();
+            while (mi != mapExchangeKeys.end())
             {
                 setAddress.insert((*mi).first);
                 mi++;
@@ -94,7 +113,7 @@ public:
     {
         {
             LOCK(cs_KeyStore);
-            KeyMap::const_iterator mi = mapKeys.find(address);
+            RegKeyMap::const_iterator mi = mapKeys.find(address);
             if (mi != mapKeys.end())
             {
                 keyOut.Reset();
@@ -108,8 +127,8 @@ public:
     {
         {
             LOCK(cs_KeyStore);
-            KeyMap::const_iterator mi = mapKeys.find(address);
-            if (mi != mapKeys.end())
+            ExchangeKeyMap::const_iterator mi = mapExchangeKeys.find(address);
+            if (mi != mapExchangeKeys.end())
             {
                 keyOut.Reset();
                 keyOut.SetSecret((*mi).second.first, (*mi).second.second);
@@ -123,7 +142,9 @@ public:
     virtual bool GetCScript(const CScriptID &hash, CScript& redeemScriptOut) const;
 };
 
-typedef std::map<CKeyID, std::pair<CPubKeyBase, std::vector<unsigned char> > > CryptedKeyMap;
+typedef std::map<CKeyID, std::pair<CPubKey, std::vector<unsigned char> > >         CryptedKeyMapReg;
+typedef std::map<CKeyExchangeID, std::pair<CPubKeyExchange, std::vector<unsigned char> > > CryptedKeyMapExchange;
+
 
 /** Keystore which keeps the private keys encrypted.
  * It derives from the basic key store, which is used if no encryption is active.
@@ -131,7 +152,8 @@ typedef std::map<CKeyID, std::pair<CPubKeyBase, std::vector<unsigned char> > > C
 class CCryptoKeyStore : public CBasicKeyStore
 {
 private:
-    CryptedKeyMap mapCryptedKeys;
+    CryptedKeyMapReg      mapCryptedKeys;
+    CryptedKeyMapExchange mapCryptedExchangeKeys;
 
     CKeyingMaterial vMasterKey;
 
@@ -185,10 +207,21 @@ public:
         }
         return false;
     }
+    bool HaveKey(const CKeyExchangeID &address) const
+    {
+        {
+            LOCK(cs_KeyStore);
+            if (!IsCrypted())
+                return CBasicKeyStore::HaveKey(address);
+            return mapCryptedExchangeKeys.count(address) > 0;
+        }
+        return false;
+    }
     bool GetKey(const CKeyID &address, CKey& keyOut) const;
     bool GetKey(const CKeyExchangeID &address, CKeyExchange& keyOut) const;
     bool GetPubKey(const CKeyID &address, CPubKey& vchPubKeyOut) const;
-    void GetKeys(std::set<CKeyType> &setAddress) const
+    bool GetPubKey(const CKeyExchangeID &address, CPubKeyExchange& vchPubKeyOut) const;
+    void GetKeys(std::set<CKeyID> &setAddress) const
     {
         if (!IsCrypted())
         {
@@ -196,8 +229,23 @@ public:
             return;
         }
         setAddress.clear();
-        CryptedKeyMap::const_iterator mi = mapCryptedKeys.begin();
+        CryptedKeyMapReg::const_iterator mi = mapCryptedKeys.begin();
         while (mi != mapCryptedKeys.end())
+        {
+            setAddress.insert((*mi).first);
+            mi++;
+        }
+    }
+    void GetKeys(std::set<CKeyExchangeID> &setAddress) const
+    {
+        if (!IsCrypted())
+        {
+            CBasicKeyStore::GetKeys(setAddress);
+            return;
+        }
+        setAddress.clear();
+        CryptedKeyMapExchange::const_iterator mi = mapCryptedExchangeKeys.begin();
+        while (mi != mapCryptedExchangeKeys.end())
         {
             setAddress.insert((*mi).first);
             mi++;

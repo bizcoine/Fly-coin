@@ -652,6 +652,7 @@ int64_t CTransaction::GetAdditionalFeeV3() const
 	}
 		
 	return nValueAdditionalFee;
+}
 
 bool CTransaction::IsAdditionalFeeIncluded() const
 {

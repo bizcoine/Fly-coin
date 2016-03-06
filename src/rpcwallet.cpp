@@ -1868,7 +1868,7 @@ public:
 
     Object operator()(const CKeyExchangeID &keyExchangeID) const {
         Object obj;
-        CPubKey vchPubKey;
+        CPubKeyExchange vchPubKey;
         pwalletMain->GetPubKey(keyExchangeID, vchPubKey);
         obj.push_back(Pair("isscript", false));
         obj.push_back(Pair("pubkey", false));
@@ -1923,7 +1923,6 @@ Value validateaddress(const Array& params, bool fHelp)
         }
         if (pwalletMain->mapAddressBook.count(dest))
             ret.push_back(Pair("account", pwalletMain->mapAddressBook[dest]));
-        ret.push_back(Pair("nonstandard", fIsExchangeWallet && address.IsNotStandard()));
     }
     return ret;
 }
@@ -2200,7 +2199,7 @@ Value setstakesplitthreshold(const Array& params, bool fHelp)
 	CWalletDB walletdb(pwalletMain->strWalletFile);
 	LOCK(pwalletMain->cs_wallet);
 	{
-		bool fFileBacked = pwalletMain->fFileBacked;
+        bool fFileBacked = (pwalletMain->fFileBacked & pwalletMain->fFileBackedExchange);
 		
 		Object result;
 		pwalletMain->nStakeSplitThreshold = nStakeSplitThreshold;
@@ -2534,7 +2533,7 @@ Value savings(const Array &params, bool fHelp)
 		{
 			LOCK(pwalletMain->cs_wallet);
 			{
-				fFileBacked = pwalletMain->fFileBacked;
+                fFileBacked = (pwalletMain->fFileBacked & pwalletMain->fFileBackedExchange);
 				string strRet;
 				if(fFileBacked)
 				{
@@ -2675,7 +2674,7 @@ Value savings(const Array &params, bool fHelp)
     
 	LOCK(pwalletMain->cs_wallet);
 	{
-		fFileBacked = pwalletMain->fFileBacked;
+        fFileBacked = (pwalletMain->fFileBacked & pwalletMain->fFileBackedExchange);
 		//Error if 0 is entered
 		if(nPercent == 0)
 		{

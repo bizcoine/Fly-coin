@@ -299,7 +299,6 @@ public:
     bool Set(const CScriptID &id)
     {
         SetData(fTestNet ? SCRIPT_ADDRESS_TEST : SCRIPT_ADDRESS, &id, 20);
->>>>>>> refs/remotes/origin/dev
         return true;
     }
 
@@ -369,14 +368,12 @@ public:
             return CNoDestination();
         switch (nVersion) {
         case PUBKEY_ADDRESS:
-        case PUBKEY_ADDRESS_NON_STANDARD:
         case PUBKEY_ADDRESS_TEST: {
             uint160 id;
             memcpy(&id, &vchData[0], 20);
             return CKeyID(id);
         }
         case SCRIPT_ADDRESS:
-        case SCRIPT_ADDRESS_NON_STANDARD:
         case SCRIPT_ADDRESS_TEST: {
             uint160 id;
             memcpy(&id, &vchData[0], 20);
@@ -384,7 +381,7 @@ public:
         }
         case EXCHANGE_ADDRESS:
         case EXCHANGE_ADDRESS_TEST: {
-            uint160 id;
+            uint256 id;
             memcpy(&id, &vchData[0], 20);
             return CKeyExchangeID(id);
         }
@@ -397,7 +394,6 @@ public:
             return false;
         switch (nVersion) {
         case PUBKEY_ADDRESS:
-        case PUBKEY_ADDRESS_NON_STANDARD:
         case PUBKEY_ADDRESS_TEST: {
             uint160 id;
             memcpy(&id, &vchData[0], 20);
@@ -414,7 +410,7 @@ public:
         switch (nVersion) {
         case EXCHANGE_ADDRESS:
         case EXCHANGE_ADDRESS_TEST: {
-            uint160 id;
+            uint256 id;
             memcpy(&id, &vchData[0], 20);
             keyID = CKeyExchangeID(id);
             return true;
@@ -428,7 +424,6 @@ public:
             return false;
         switch (nVersion) {
         case SCRIPT_ADDRESS:
-        case SCRIPT_ADDRESS_NON_STANDARD:
         case SCRIPT_ADDRESS_TEST: {
             return true;
         }

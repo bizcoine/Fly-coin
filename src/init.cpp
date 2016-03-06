@@ -848,11 +848,17 @@ bool AppInit2()
         RandAddSeedPerfmon();
 
         CPubKey newDefaultKey;
+        CPubKeyExchange newDefaultExchangeKey;
         if (!pwalletMain->GetKeyFromPool(newDefaultKey, false))
             strErrors << _("Cannot initialize keypool") << "\n";
+        if (!pwalletMain->GetKeyFromPool(newDefaultExchangeKey, false))
+            strErrors << _("Cannot initialize keypool") << "\n";
         pwalletMain->SetDefaultKey(newDefaultKey);
+        pwalletMain->SetDefaultExchangeKey(newDefaultExchangeKey);
         if (!pwalletMain->SetAddressBookName(pwalletMain->vchDefaultKey.GetID(), ""))
             strErrors << _("Cannot write default address") << "\n";
+        if (!pwalletMain->SetAddressBookName(pwalletMain->vchDefaultExchangeKey.GetID(), ""))
+            strErrors << _("Cannot write default Exchange address") << "\n";
     }
 
     printf("%s", strErrors.str().c_str());
