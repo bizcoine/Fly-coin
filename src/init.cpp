@@ -32,6 +32,7 @@ std::string strWalletFileName;
 bool fConfChange;
 bool fMinimizeCoinAge;
 bool fEnforceCanonical;
+bool fIsExchangeWallet;
 unsigned int nNodeLifespan;
 unsigned int nDerivationMethodIndex;
 unsigned int nMinerSleep;
@@ -131,6 +132,7 @@ void HandleSIGHUP(int)
 bool AppInit(int argc, char* argv[])
 {
     bool fRet = false;
+    fIsExchangeWallet = false;
     try
     {
         //
@@ -231,6 +233,7 @@ std::string HelpMessage()
 {
     string strUsage = _("Options:") + "\n" +
         "  -?                     " + _("This help message") + "\n" +
+        "  -exchangewallet        " + _("Wallet uses non-standard addresses (exchanges only)") + "\n" +
         "  -conf=<file>           " + _("Specify configuration file (default: FlyCoin.conf)") + "\n" +
         "  -pid=<file>            " + _("Specify pid file (default: FlyCoind.pid)") + "\n" +
         "  -datadir=<dir>         " + _("Specify data directory") + "\n" +
@@ -390,9 +393,13 @@ bool AppInit2()
     nDerivationMethodIndex = 0;
 
     fTestNet = GetBoolArg("-testnet");
-    //fTestNet = true;
+
     if (fTestNet) {
         SoftSetBoolArg("-irc", true);
+    }
+
+    if (mapArgs.count("-exchangewallet")) {
+        fIsExchangeWallet = true;        
     }
 
     if (mapArgs.count("-bind")) {

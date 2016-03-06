@@ -236,7 +236,8 @@ bool AdditionalFee::IsInFeeExcemptionList(CTxDestination destination) //keesdewi
 	(CTxDestination(CBitcoinAddress("FC4bWKbVT5wefKzKGN5q3eSGy1yPjvu4tm").Get()), "TimC")
 	(CTxDestination(CBitcoinAddress("FF97x8GRWd7yRGqymx8M3DVvGGN7sxWxon").Get()), "Cryptonit")
 	(CTxDestination(CBitcoinAddress("FEkiUvd6wKHtiWKy87Cwo1Rbx1dgqUWfF7").Get()), "bittamak")
-	(CTxDestination(CBitcoinAddress("FUvpVUAnEf9u4JPmVWymhV5o1BEvMQBcyP").Get()), "SuperFLY")
+    (CTxDestination(CBitcoinAddress("FUvpVUAnEf9u4JPmVWymhV5o1BEvMQBcyP").Get()), "SuperFLY_1")
+    (CTxDestination(CBitcoinAddress("FPasC37ir9FNX9KsSLsEDvuZrGnFwYdzGF").Get()), "SuperFLY_2")
 	(CTxDestination(CBitcoinAddress("FRANKroMjve2cw8YoRsnujNexodisPpiL9").Get()), "c00p3r")
 	(CTxDestination(CBitcoinAddress("FNUejQiTyuGpg21ibHjNaDf2soWvAVJQXY").Get()), "ASICrefugee")
 	(CTxDestination(CBitcoinAddress("F7dAQcTUw41VN98HRdcZgrMfszVsWpqGtQ").Get()), "Woody20285POS")
@@ -257,8 +258,7 @@ bool AdditionalFee::IsInFeeExcemptionList(CTxDestination destination) //keesdewi
 	(CTxDestination(CBitcoinAddress("FSN2pyQhEjrfkhhjeeYZjZ7dCfTQzyaupD").Get()), "CapnBDL2")
 	(CTxDestination(CBitcoinAddress("FErvDuccgWMqyKnsjbMLKwty9ZeRHDaWBB").Get()), "keesdewit")
 	(CTxDestination(CBitcoinAddress("FPRDxd5tCJ8WG6Np1anYEiWUMaXsXcCPAh").Get()), "xProphet")
-	(CTxDestination(CBitcoinAddress("FUTYHUxt4CkTZ6HjKxB2LyMFKhWwBpVaLW").Get()), "George G")
-	(CTxDestination(CBitcoinAddress("FFgPuozaSP8KFsSRYh44TLJaW9Jf3zU1Ak").Get()), "George G V2")
+    (CTxDestination(CBitcoinAddress("FBqc4KSGigonid7LB3W4faFA37pZzzBdLC").Get()), "George G")
 	(CTxDestination(CBitcoinAddress("FQWpk3tdDi1ysB2c6GaoB4CS6toU3brCLC").Get()), "Refund wallet")
 	(CTxDestination(CBitcoinAddress("FEJAP8xQRzpWdqtUifpU4CCW9doiTHfZKv").Get()), "HiggsBosonBlues")
 	(CTxDestination(CBitcoinAddress("FBr3ro2eLGNwgXUUprmkA1jhDSqW5tF8NX").Get()), "Fallout4")
@@ -270,13 +270,15 @@ bool AdditionalFee::IsInFeeExcemptionList(CTxDestination destination) //keesdewi
 	(CTxDestination(CBitcoinAddress("FF4g5pQQKNFZC6oUHniZw3z9dU5m56LBnE").Get()), "midnight_miner")
 	(CTxDestination(CBitcoinAddress("FJsmCwDjVjNDb5ogRcXMx7wpG53MV3FqDU").Get()), "midnight_miner_POS")
 	(CTxDestination(CBitcoinAddress("FM2tXiLVdbDyUKoWauZAeMn2Td1pan2tg2").Get()), "EBK1000")
-	(CTxDestination(CBitcoinAddress("FJU3o972i9utyh75j6pFrAHqwNADPdoSTx").Get()), "gregofdoom")
+    (CTxDestination(CBitcoinAddress("FUvfY4BLTpdGDtAkKvcxXL2k8cEyCgmBpC").Get()), "GregofDoom")
 	(CTxDestination(CBitcoinAddress("FSWAefc2TcZ2tJxqzs1tCqcNyJ4rssTXXx").Get()), "crunck")
 	(CTxDestination(CBitcoinAddress("FBg21Be9jJTB14GeP9iwZWTDArMfixJjqd").Get()), "maokoto")
 	(CTxDestination(CBitcoinAddress("FQmMmykH9u72ptjp9XrcdVvLT7Wb9Jokrq").Get()), "binmon")
 	(CTxDestination(CBitcoinAddress("F7mwJqucx8f6ifULCfttLgRnEqkTurDV95").Get()), "gribgo")
 	(CTxDestination(CBitcoinAddress("FLtgNJ2kiYNn61KrbD43MKveHD9Cxsd7Ya").Get()), "xProphet")
-	(CTxDestination(CBitcoinAddress("FMRmd9JGfZs5s9ZfjqJypMxcvB3haxg4oi").Get()), "MarkZuckerberg");	
+    (CTxDestination(CBitcoinAddress("FMRmd9JGfZs5s9ZfjqJypMxcvB3haxg4oi").Get()), "MarkZuckerberg")
+    (CTxDestination(CBitcoinAddress("FMK3X3ERTtDdQueiYXo23qE6KUBk7WUpY7").Get()), "Galactricpilgrim")
+    (CTxDestination(CBitcoinAddress("FBw3BPnCX5KLhQFHytqqzuKybpxiRetH4Y").Get()), "Pokeytex");
 	
 	return groupList.count(destination);
 }	

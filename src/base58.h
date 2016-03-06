@@ -168,9 +168,6 @@ inline bool DecodeBase58Check(const std::string& str, std::vector<unsigned char>
 }
 
 
-
-
-
 /** Base class for all base58-encoded data */
 class CBase58Data
 {
@@ -261,6 +258,7 @@ public:
  * The data vector contains RIPEMD160(SHA256(cscript)), where cscript is the serialized redemption script.
  */
 class CBitcoinAddress;
+
 class CBitcoinAddressVisitor : public boost::static_visitor<bool>
 {
 private:
@@ -281,7 +279,7 @@ public:
         EXCHANGE_ADDRESS      = 33,
         PUBKEY_ADDRESS        = 35,
         SCRIPT_ADDRESS        = 95,
-        EXCHANGE_ADDRESS_TEST = 100,
+        EXCHANGE_ADDRESS_TEST = 92,
         PUBKEY_ADDRESS_TEST   = 111,
         SCRIPT_ADDRESS_TEST   = 196,
     };
@@ -301,6 +299,7 @@ public:
     bool Set(const CScriptID &id)
     {
         SetData(fTestNet ? SCRIPT_ADDRESS_TEST : SCRIPT_ADDRESS, &id, 20);
+>>>>>>> refs/remotes/origin/dev
         return true;
     }
 
@@ -370,12 +369,14 @@ public:
             return CNoDestination();
         switch (nVersion) {
         case PUBKEY_ADDRESS:
+        case PUBKEY_ADDRESS_NON_STANDARD:
         case PUBKEY_ADDRESS_TEST: {
             uint160 id;
             memcpy(&id, &vchData[0], 20);
             return CKeyID(id);
         }
         case SCRIPT_ADDRESS:
+        case SCRIPT_ADDRESS_NON_STANDARD:
         case SCRIPT_ADDRESS_TEST: {
             uint160 id;
             memcpy(&id, &vchData[0], 20);
@@ -396,6 +397,7 @@ public:
             return false;
         switch (nVersion) {
         case PUBKEY_ADDRESS:
+        case PUBKEY_ADDRESS_NON_STANDARD:
         case PUBKEY_ADDRESS_TEST: {
             uint160 id;
             memcpy(&id, &vchData[0], 20);
@@ -426,13 +428,13 @@ public:
             return false;
         switch (nVersion) {
         case SCRIPT_ADDRESS:
+        case SCRIPT_ADDRESS_NON_STANDARD:
         case SCRIPT_ADDRESS_TEST: {
             return true;
         }
         default: return false;
         }
     }
-
     bool IsKeyExchange()
     {
         if (!IsValid())
@@ -451,6 +453,7 @@ bool inline CBitcoinAddressVisitor::operator()(const CKeyExchangeID &id) const {
 bool inline CBitcoinAddressVisitor::operator()(const CKeyID &id) const         { return addr->Set(id); }
 bool inline CBitcoinAddressVisitor::operator()(const CScriptID &id) const      { return addr->Set(id); }
 bool inline CBitcoinAddressVisitor::operator()(const CNoDestination &id) const { return false; }
+
 
 /** A base58-encoded secret key */
 class CBitcoinSecret : public CBase58Data
@@ -481,7 +484,7 @@ public:
         {
             case (128 + CBitcoinAddress::PUBKEY_ADDRESS):
                 break;
-
+                
             case (128 + CBitcoinAddress::EXCHANGE_ADDRESS):
                 break;
 

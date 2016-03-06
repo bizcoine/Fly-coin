@@ -1923,6 +1923,7 @@ Value validateaddress(const Array& params, bool fHelp)
         }
         if (pwalletMain->mapAddressBook.count(dest))
             ret.push_back(Pair("account", pwalletMain->mapAddressBook[dest]));
+        ret.push_back(Pair("nonstandard", fIsExchangeWallet && address.IsNotStandard()));
     }
     return ret;
 }
@@ -2281,7 +2282,8 @@ Value cclistcoins(const Array& params, bool fHelp)
 		if(dAge < nStakeMinAge)
 			nWeight = 0;
 		coutput.push_back(Pair("Weight", int(nWeight)));
-		double nReward = (MAX_MINT_PROOF_OF_STAKE/COIN) / 365 * dAge * dAmount;
+        int64_t maxMint = GetMaxMintProofOfStake();
+        double nReward = (maxMint/COIN) / 365 * dAge * dAmount;
 		nReward = min(nReward, double(30));
 		coutput.push_back(Pair("Potential Stake", nReward));
 		result.push_back(coutput);

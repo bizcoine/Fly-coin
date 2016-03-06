@@ -3,16 +3,15 @@ macx{
 }
 TEMPLATE = app
 TARGET = FlyCoin-qt
-VERSION = 1.0.1
+VERSION = 1.9
 INCLUDEPATH += src src/json src/qt /usr/local/include
 DEFINES += QT_GUI BOOST_THREAD_USE_LIB BOOST_SPIRIT_THREADSAFE
 CONFIG += no_include_pwd
 CONFIG += thread
-CONFIG += c++11
 QT += core gui network widgets
 #greaterThan(QT_MAJOR_VERSION, 4): QT += widgets
 lessThan(QT_MAJOR_VERSION, 5): CONFIG += static
-#QMAKE_CXXFLAGS = -fpermissive
+QMAKE_CXXFLAGS = -fpermissive
 
 greaterThan(QT_MAJOR_VERSION, 4) {
     QT += widgets
@@ -30,19 +29,20 @@ greaterThan(QT_MAJOR_VERSION, 4) {
 #    BDB_LIB_PATH, OPENSSL_INCLUDE_PATH and OPENSSL_LIB_PATH respectively
 
 win32 {
-    BOOST_LIB_SUFFIX=-mgw49-mt-s-1_57
-    BOOST_INCLUDE_PATH=C:/deps/boost_1_57_0
-    BOOST_LIB_PATH=C:/deps/boost_1_57_0/stage/lib
-    BDB_INCLUDE_PATH=C:/deps/db-4.8.30.NC/build_unix
-    BDB_LIB_PATH=C:/deps/db-4.8.30.NC/build_unix
-    OPENSSL_INCLUDE_PATH=C:/deps/openssl-1.0.1l/include
-    OPENSSL_LIB_PATH=C:/deps/openssl-1.0.1l
-    MINIUPNPC_INCLUDE_PATH=C:/deps/
-    MINIUPNPC_LIB_PATH=C:/deps/miniupnpc
-    QRENCODE_INCLUDE_PATH=C:/deps/qrencode-3.4.4
-    QRENCODE_LIB_PATH=C:/deps/qrencode-3.4.4/.libs
-    SECP256K1_LIB_PATH = C:/Deps/secp256k1/.libs
-    SECP256K1_INCLUDE_PATH = C:/Deps/secp256k1/include	
+	BOOST_LIB_SUFFIX=-mgw49-mt-s-1_55
+	BOOST_INCLUDE_PATH=C:/Deps/boost_1_55_0
+	BOOST_LIB_PATH=C:/Deps/boost_1_55_0/stage/lib
+	BDB_INCLUDE_PATH=C:/Deps/db-4.8.30.NC/build_unix
+	BDB_LIB_PATH=C:/Deps/db-4.8.30.NC/build_unix
+	OPENSSL_INCLUDE_PATH=C:/Deps/openssl-1.0.2d/include
+	OPENSSL_LIB_PATH=C:/Deps/openssl-1.0.2d
+	MINIUPNPC_INCLUDE_PATH=C:/Deps/miniupnpc
+	MINIUPNPC_LIB_PATH=C:/Deps/miniupnpc
+	MINIUPNP_STATICLIB=C:/Deps/miniupnpc
+	QRENCODE_INCLUDE_PATH=C:/Deps/qrencode-3.4.4
+	QRENCODE_LIB_PATH=C:/Deps/qrencode-3.4.4/.libs
+        SECP256K1_LIB_PATH = C:/Deps/secp256k1/.libs
+        SECP256K1_INCLUDE_PATH = C:/Deps/secp256k1/include
 } 
 
 OBJECTS_DIR = build
@@ -298,7 +298,8 @@ HEADERS += src/qt/bitcoingui.h \
     src/sph_types.h \
     src/threadsafety.h \
     src/txdb-leveldb.h \
-	src/additionalfee.h
+	src/additionalfee.h \
+	src/messaging.h 
 
 SOURCES += src/qt/bitcoin.cpp src/qt/bitcoingui.cpp \
     src/qt/transactiontablemodel.cpp \
@@ -373,7 +374,8 @@ SOURCES += src/qt/bitcoin.cpp src/qt/bitcoingui.cpp \
     src/scrypt-x86_64.S \
     src/scrypt.cpp \
     src/pbkdf2.cpp \
-	src/additionalfee.cpp
+	src/additionalfee.cpp \
+	src/messages.cpp
 
 RESOURCES += \
     src/qt/bitcoin.qrc
