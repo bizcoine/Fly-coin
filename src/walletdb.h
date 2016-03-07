@@ -258,6 +258,11 @@ public:
         nWalletDBUpdated++;
         return Write(std::string("defaultkey"), vchPubKey.Raw());
     }
+    bool WriteDefaultExchangeKey(const CPubKeyExchange& vchPubKey)
+    {
+        nWalletDBUpdated++;
+        return Write(std::string("defaultexchangekey"), vchPubKey.Raw());
+    }
 
     bool ReadPool(int64_t nPool, CKeyPool& keypool)
     {

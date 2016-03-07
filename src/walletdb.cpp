@@ -426,6 +426,10 @@ ReadKeyValue(CWallet* pwallet, CDataStream& ssKey, CDataStream& ssValue,
         {
             ssValue >> pwallet->vchDefaultKey;
         }
+        else if (strType == "defaultexchangekey")
+        {
+            ssValue >> pwallet->vchDefaultExchangeKey;
+        }
         else if (strType == "pool")
         {
             int64_t nIndex;
@@ -438,8 +442,12 @@ ReadKeyValue(CWallet* pwallet, CDataStream& ssKey, CDataStream& ssValue,
             // creation time. Note that this may be overwritten by actually
             // stored metadata for that key later, which is fine.
             CKeyID keyid = keypool.vchPubKey.GetID();
+            CKeyExchangeID keyexchangeid = keypool.vchPubKeyExchange.GetID();
             if (pwallet->mapKeyMetadata.count(keyid) == 0)
                 pwallet->mapKeyMetadata[keyid] = CKeyMetadata(keypool.nTime);
+            if (pwallet->mapKeyMetadata.count(keyexchangeid) == 0)
+                pwallet->mapKeyMetadata[keyexchangeid] = CKeyMetadata(keypool.nTime);
+
 
         }
         else if (strType == "version")
@@ -771,7 +779,7 @@ void ThreadFlushWalletDB(void* parg)
 
 bool BackupWallet(const CWallet& wallet, const string& strDest)
 {
-    if (!wallet.fFileBacked)
+    if (!wallet.fFileBacked || !wallet.fFileBackedExchange)
         return false;
     while (!fShutdown)
     {

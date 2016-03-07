@@ -1619,9 +1619,10 @@ class CAffectedKeysVisitor : public boost::static_visitor<void> {
 private:
     const CKeyStore &keystore;
     std::vector<CKeyID> &vKeys;
+    std::vector<CKeyExchangeID> &vExchangeKeys;
 
 public:
-    CAffectedKeysVisitor(const CKeyStore &keystoreIn, std::vector<CKeyID> &vKeysIn) : keystore(keystoreIn), vKeys(vKeysIn) {}
+    CAffectedKeysVisitor(const CKeyStore &keystoreIn, std::vector<CKeyID> &vKeysIn, std::vector<CKeyExchangeID> &vExchangeKeysIn) : keystore(keystoreIn), vKeys(vKeysIn), vExchangeKeys(vExchangeKeysIn){}
 
     void Process(const CScript &script) {
         txnouttype type;
@@ -1639,7 +1640,7 @@ public:
     }
     void operator()(const CKeyExchangeID &keyId) {
         if (keystore.HaveKey(keyId))
-            vKeys.push_back(keyId);
+            vExchangeKeys.push_back(keyId);
     }
     void operator()(const CScriptID &scriptId) {
         CScript script;
@@ -1651,8 +1652,8 @@ public:
 };
 
 
-void ExtractAffectedKeys(const CKeyStore &keystore, const CScript& scriptPubKey, std::vector<CKeyID> &vKeys) {
-    CAffectedKeysVisitor(keystore, vKeys).Process(scriptPubKey);
+void ExtractAffectedKeys(const CKeyStore &keystore, const CScript& scriptPubKey, std::vector<CKeyID> &vKeys, std::vector<CKeyExchangeID> &vExchangeKeysIn) {
+    CAffectedKeysVisitor(keystore, vKeys, vExchangeKeysIn).Process(scriptPubKey);
 }
 
 bool ExtractDestinations(const CScript& scriptPubKey, txnouttype& typeRet, vector<CTxDestination>& addressRet, int& nRequiredRet)

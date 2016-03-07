@@ -43,16 +43,18 @@ class CKeyPool
 public:
     int64_t nTime;
     CPubKey vchPubKey;
+    CPubKeyExchange vchPubKeyExchange;
 
     CKeyPool()
     {
         nTime = GetTime();
     }
 
-    CKeyPool(const CPubKey& vchPubKeyIn)
+    CKeyPool(const CPubKey& vchPubKeyIn, const CPubKeyExchange& vchPubKeyExchangeIn)
     {
         nTime = GetTime();
         vchPubKey = vchPubKeyIn;
+        vchPubKeyExchange = vchPubKeyExchangeIn;
     }
 
     IMPLEMENT_SERIALIZE
@@ -61,6 +63,7 @@ public:
             READWRITE(nVersion);
         READWRITE(nTime);
         READWRITE(vchPubKey);
+        READWRITE(vchPubKeyExchange);
     )
 };
 
@@ -86,6 +89,7 @@ public:
     mutable CCriticalSection cs_wallet;
 
     bool fFileBacked;
+    bool fFileBackedExchange;
     std::string strWalletFile;
 	bool fWalletUnlockMintOnly;
 	bool fStakeForCharity;
@@ -122,6 +126,7 @@ public:
         nWalletVersion = FEATURE_BASE;
         nWalletMaxVersion = FEATURE_BASE;
         fFileBacked = false;
+        fFileBackedExchange = false;
         nMasterKeyMaxID = 0;
         pwalletdbEncryption = NULL;
         nOrderPosNext = 0;
@@ -152,6 +157,7 @@ public:
         nWalletMaxVersion = FEATURE_BASE;
         strWalletFile = strWalletFileIn;
         fFileBacked = true;
+        fFileBackedExchange = true;
         nMasterKeyMaxID = 0;
         pwalletdbEncryption = NULL;
         nOrderPosNext = 0;
@@ -184,6 +190,7 @@ public:
     std::map<CTxDestination, std::string> mapAddressBook;
 
     CPubKey vchDefaultKey;
+    CPubKeyExchange vchDefaultExchangeKey;
     int64_t nTimeFirstKey;
 
     // check whether we are allowed to upgrade (or already support) to the named feature
@@ -196,6 +203,7 @@ public:
     // keystore implementation
     // Generate a new key
     CPubKey GenerateNewKey();
+    CPubKeyExchange GenerateNewExchangeKey();
     // Adds a key to the store, and saves it to disk.
     bool AddKey(const CKey& key);
     bool AddKey(const CKeyExchange& key);
@@ -269,10 +277,11 @@ public:
     bool NewKeyPool();
     bool TopUpKeyPool(unsigned int nSize = 0);
     int64_t AddReserveKey(const CKeyPool& keypool);
-    void ReserveKeyFromKeyPool(int64_t& nIndex, CKeyPool& keypool);
+    void ReserveKeyFromKeyPool(int64_t& nIndex, CKeyPool& keypool, bool exchangeType);
     void KeepKey(int64_t nIndex);
     void ReturnKey(int64_t nIndex);
-    bool GetKeyFromPool(CPubKeyBase &key, bool fAllowReuse=true);
+    bool GetKeyFromPool(CPubKey &key, bool fAllowReuse=true);
+    bool GetKeyFromPool(CPubKeyExchange &key, bool fAllowReuse=true);
     int64_t GetOldestKeyPoolTime();
     void GetAllReserveKeys(std::set<CKeyType> &setAddress) const;
 
@@ -373,6 +382,8 @@ public:
     bool GetTransaction(const uint256 &hashTx, CWalletTx& wtx);
 
     bool SetDefaultKey(const CPubKey &vchPubKey);
+    bool SetDefaultExchangeKey(const CPubKeyExchange &vchPubKey);
+
 
     // signify that a particular wallet feature is now used. this may change nWalletVersion and nWalletMaxVersion if those are lower
     bool SetMinVersion(enum WalletFeature, CWalletDB* pwalletdbIn = NULL, bool fExplicit = false);
@@ -404,6 +415,7 @@ protected:
     CWallet* pwallet;
     int64_t nIndex;
     CPubKey vchPubKey;
+    CPubKeyExchange vchPubKeyExchange;
 public:
     CReserveKey(CWallet* pwalletIn)
     {
@@ -419,6 +431,7 @@ public:
 
     void ReturnKey();
     CPubKey GetReservedKey();
+    CPubKeyExchange GetReservedExchangeKey();
     void KeepKey();
 };
 

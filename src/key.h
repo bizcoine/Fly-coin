@@ -57,12 +57,12 @@ public:
 
 /** A reference to a CKeyExchange: the Hash160 of its serialized public key */
 /** This was the best solution to differentiating an Exchange key in the
- * map address book from a regular address key - Griffith */
-class CKeyExchangeID : public uint160
+ * map address book from a regular address key as well as changing the int type- Griffith */
+class CKeyExchangeID : public uint256
 {
 public:
-    CKeyExchangeID() : uint160(0) { }
-    CKeyExchangeID(const uint160 &in) : uint160(in) { }
+    CKeyExchangeID() : uint256(0) { }
+    CKeyExchangeID(const uint256 &in) : uint256(in) { }
 };
 
 
@@ -75,21 +75,25 @@ public:
 };
 
 /** An encapsulated public key. */
-class CPubKeyBase
+class CPubKey
 {
-public:
+private:
     std::vector<unsigned char> vchPubKey;
+    friend class CKey;
 
-    CPubKeyBase()
+public:
+    CPubKey(){}
+    CPubKey(const std::vector<unsigned char> &vchPubKeyIn)
     {
+        vchPubKey = vchPubKeyIn;
     }
-    CPubKeyBase(const std::vector<unsigned char> &vchPubKeyIn) : vchPubKey(vchPubKeyIn)
+    CKeyID GetID() const
     {
+        return CKeyID(Hash160(vchPubKey));
     }
-
-    friend bool operator==(const CPubKeyBase &a, const CPubKeyBase &b) { return a.vchPubKey == b.vchPubKey; }
-    friend bool operator!=(const CPubKeyBase &a, const CPubKeyBase &b) { return a.vchPubKey != b.vchPubKey; }
-    friend bool operator<(const CPubKeyBase &a, const CPubKeyBase &b) { return a.vchPubKey < b.vchPubKey; }
+    friend bool operator==(const CPubKey &a, const CPubKey &b) { return a.vchPubKey == b.vchPubKey; }
+    friend bool operator!=(const CPubKey &a, const CPubKey &b) { return a.vchPubKey != b.vchPubKey; }
+    friend bool operator<(const CPubKey &a, const CPubKey &b) { return a.vchPubKey < b.vchPubKey; }
 
     IMPLEMENT_SERIALIZE(
         READWRITE(vchPubKey);
@@ -116,27 +120,12 @@ public:
     }
 };
 
-class CPubKey : public CPubKeyBase
+class CPubKeyExchange
 {
-public:
-    CPubKey(){}
-    CPubKey(const std::vector<unsigned char> &vchPubKeyIn)
-    {
-        vchPubKey = vchPubKeyIn;
-    }
-    CKeyID GetID() const
-    {
-        return CKeyID(Hash160(vchPubKey));
-    }
-    CPubKeyBase GetBase() const
-    {
-        return CPubKeyBase(vchPubKey);
-    }
+private:
+    std::vector<unsigned char> vchPubKey;
+    friend class CKeyExchange;
 
-};
-
-class CPubKeyExchange : public CPubKeyBase
-{
 public:
     CPubKeyExchange(){}
     CPubKeyExchange(const std::vector<unsigned char> &vchPubKeyIn)
@@ -145,11 +134,34 @@ public:
     }
     CKeyExchangeID GetID() const
     {
-        return CKeyExchangeID(Hash160(vchPubKey));
+        return CKeyExchangeID(Hash256(vchPubKey));
     }
-    CPubKeyBase GetBase() const
+    friend bool operator==(const CPubKeyExchange &a, const CPubKeyExchange &b) { return a.vchPubKey == b.vchPubKey; }
+    friend bool operator!=(const CPubKeyExchange &a, const CPubKeyExchange &b) { return a.vchPubKey != b.vchPubKey; }
+    friend bool operator<(const CPubKeyExchange &a, const CPubKeyExchange &b) { return a.vchPubKey < b.vchPubKey; }
+
+    IMPLEMENT_SERIALIZE(
+        READWRITE(vchPubKey);
+    )
+
+    uint256 GetHash() const
     {
-        return CPubKeyBase(vchPubKey);
+        return Hash(vchPubKey.begin(), vchPubKey.end());
+    }
+
+    bool IsValid() const
+    {
+        return vchPubKey.size() == 33 || vchPubKey.size() == 65;
+    }
+
+    bool IsCompressed() const
+    {
+        return vchPubKey.size() == 33;
+    }
+
+    std::vector<unsigned char> Raw() const
+    {
+        return vchPubKey;
     }
 };
 
@@ -191,7 +203,7 @@ public:
     bool SetSecret(const CSecret& vchSecret, bool fCompressed = false);
     CSecret GetSecret(bool &fCompressed) const;
     CPrivKey GetPrivKey() const;
-    bool SetPubKey(const CPubKeyBase& vchPubKey);
+    bool SetPubKey(const CPubKey& vchPubKey);
 
     bool Sign(uint256 hash, std::vector<unsigned char>& vchSig);
 
@@ -244,7 +256,7 @@ public:
     bool SetSecret(const CSecret& vchSecret, bool fCompressed = false);
     CSecret GetSecret(bool &fCompressed) const;
     CPrivKey GetPrivKey() const;
-    bool SetPubKey(const CPubKeyBase& vchPubKey);
+    bool SetPubKey(const CPubKeyExchange& vchPubKey);
 
     bool Sign(uint256 hash, std::vector<unsigned char>& vchSig);
 

@@ -28,6 +28,7 @@
 
 #include <openssl/sha.h>
 #include <openssl/ripemd.h>
+#include <openssl/aes.h>
 
 #include "netbase.h" // for AddTimeData
 
@@ -541,6 +542,16 @@ inline uint160 Hash160(const std::vector<unsigned char>& vch)
     RIPEMD160((unsigned char*)&hash1, sizeof(hash1), (unsigned char*)&hash2);
     return hash2;
 }
+
+inline uint256 Hash256(const std::vector<unsigned char>& vch)
+{
+    uint256 hash1;
+    SHA256(&vch[0], vch.size(), (unsigned char*)&hash1);
+    uint256 hash2;
+    SHA512((unsigned char*)&hash1, sizeof(hash1), (unsigned char*)&hash2);
+    return hash2;
+}
+
 
 /**
  * Timing-attack-resistant comparison.

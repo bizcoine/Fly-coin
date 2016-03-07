@@ -396,7 +396,7 @@ CPrivKey CKeyExchange::GetPrivKey() const
     return vchPrivKey;
 }
 
-bool CKey::SetPubKey(const CPubKeyBase &vchPubKey)
+bool CKey::SetPubKey(const CPubKey &vchPubKey)
 {
     const unsigned char* pbegin = &vchPubKey.vchPubKey[0];
     if (o2i_ECPublicKey(&pkey, &pbegin, vchPubKey.vchPubKey.size()))
@@ -411,7 +411,7 @@ bool CKey::SetPubKey(const CPubKeyBase &vchPubKey)
     return false;
 }
 
-bool CKeyExchange::SetPubKey(const CPubKeyBase &vchPubKey)
+bool CKeyExchange::SetPubKey(const CPubKeyExchange &vchPubKey)
 {
     const unsigned char* pbegin = &vchPubKey.vchPubKey[0];
     if (o2i_ECPublicKey(&pkey, &pbegin, vchPubKey.vchPubKey.size()))
