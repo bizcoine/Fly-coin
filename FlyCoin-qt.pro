@@ -41,8 +41,8 @@ win32 {
 	MINIUPNP_STATICLIB=C:/Deps/miniupnpc
 	QRENCODE_INCLUDE_PATH=C:/Deps/qrencode-3.4.4
 	QRENCODE_LIB_PATH=C:/Deps/qrencode-3.4.4/.libs
-        SECP256K1_LIB_PATH = C:/Deps/secp256k1/.libs
-        SECP256K1_INCLUDE_PATH = C:/Deps/secp256k1/include
+    SECP256K1_LIB_PATH = C:/Deps/secp256k1/.libs
+    SECP256K1_INCLUDE_PATH = C:/Deps/secp256k1/include
 } 
 
 OBJECTS_DIR = build
@@ -298,8 +298,7 @@ HEADERS += src/qt/bitcoingui.h \
     src/sph_types.h \
     src/threadsafety.h \
     src/txdb-leveldb.h \
-	src/additionalfee.h \
-	src/messaging.h 
+	src/additionalfee.h
 
 SOURCES += src/qt/bitcoin.cpp src/qt/bitcoingui.cpp \
     src/qt/transactiontablemodel.cpp \
