@@ -598,7 +598,7 @@ int64_t CTransaction::GetPaidFee() const
 	{
 		CTxDestination outAddress;
 		ExtractDestination(txout.scriptPubKey, outAddress);
-        if(outAddress == CTxDestination(CBitcoinAddress(GetAdditionalFeeAddress()).Get()))
+        if(outAddress == CTxDestination(CBitcoinAddress(GetAdditionalFeeAddress(this->nTime)).Get()))
 			nFeePaid += txout.nValue;
 	}	
 	
@@ -607,7 +607,7 @@ int64_t CTransaction::GetPaidFee() const
 
 int64_t CTransaction::GetAdditionalFeeV2() const
 {
-	return ((pindexBest->nHeight < FORK_HEIGHT_6) || GetAdditionalFeeV3());
+    return (IsBeforeBlock(this->nTime, FORK_HEIGHT_6) || GetAdditionalFeeV3());
 }
 
 int64_t CTransaction::GetAdditionalFeeV3() const
@@ -631,13 +631,12 @@ int64_t CTransaction::GetAdditionalFeeV3() const
         if (AdditionalFee::IsInFeeExcemptionList(outAddress))
             continue; // to an exmepted address        
 
-        if (outAddress == CTxDestination(CBitcoinAddress(GetAdditionalFeeAddress()).Get()))
+        if (outAddress == CTxDestination(CBitcoinAddress(GetAdditionalFeeAddress(this->nTime)).Get()))
             continue; // this is the additional fee
 
-         if (pindexBest->nHeight > FORK_HEIGHT_6)
+         if (IsBeforeBlock(this->nTime, FORK_HEIGHT_6))
              if (outAddress == CTxDestination(CBitcoinAddress(BURNING_ADDRESS).Get()))
                  continue; // this is the burn address
-
 
         // this one can be only the actual tx out (neither the change nor the additional fee)
         nValueAdditionalFee += AdditionalFee::GetAdditionalFeeFromTable(txout.nValue);
@@ -659,13 +658,13 @@ bool CTransaction::IsAdditionalFeeIncluded() const
 
 bool CTransaction::IsAdditionalFeeIncludedV2() const
 {
-	if(IsCoinStake())
-		return true;
+    if(IsCoinStake())
+        return true;
 
-	int64_t nPaidFee = GetPaidFee();
-	int64_t nAdditionalFee = GetAdditionalFeeV2();
-	
-    return (nPaidFee >= nAdditionalFee || pindexBest->nHeight < FORK_HEIGHT_6);
+    int64_t nPaidFee = GetPaidFee();
+    int64_t nAdditionalFee = GetAdditionalFeeV2();
+
+    return (nPaidFee >= nAdditionalFee || IsBeforeBlock(this->nTime, FORK_HEIGHT_6));
 }
 
 bool CTxMemPool::accept(CTxDB& txdb, CTransaction &tx, bool fCheckInputs,
@@ -1035,6 +1034,42 @@ bool GetTransaction(const uint256 &hash, CTransaction &tx, uint256 &hashBlock)
 // CBlock and CBlockIndex
 //
 
+/// this function is used to determine if the time of a TX was before a fork point
+/// (if the fork point is the nHeight of the chain at a fork)
+bool IsBeforeBlock(unsigned int nTime, int nHeightOfFork)
+{
+    /// this is ok to check against pindexBest because once it actually gets to that point it will use another check
+    /// not using a second check after pindexBest has passed the fork height is how the chain broke - Griffith
+    if(nHeightOfFork > pindexBest->nHeight) // can also use nBestHeight here but they SHOULD be the same value
+    {
+        /// return true here because we havent hit that block yet
+        return true;
+    }
+    BlockFind:
+    /// start at the top of the chain to find the place we are actially looking for
+    CBlockIndex* pindexFinder = pindexBest;
+    /// while we havent found the block we are looking for, keep going back until we find it
+    while(pindexFinder->nHeight > nHeightOfFork)
+    {
+        if(pindexFinder->pprev == pindexGenesisBlock && nHeightOfFork !=0)
+        {
+            /// this should NEVER happen, it will happen if a negative number is entered but again,
+            ///  that should never be the case
+            assert(false);
+        }
+        pindexFinder = pindexFinder->pprev;
+    }
+    /// once we are here pindexFiner height should be the same as the height of the fork
+    if(pindexFinder->nHeight != nHeightOfFork)
+    {
+        /// this should not happen, if it does something fucked up or your chain is corrupt
+        printf("ERROR FINDING BLOCK HEIGHT RETRYING \n");
+        goto BlockFind;
+    }
+    /// this return determines if we our current time is less than the time of the fork
+    return (pindexFinder->nTime < nTime);
+}
+
 static CBlockIndex* pblockindexFBBHLast;
 CBlockIndex* FindBlockByHeight(int nHeight)
 {
@@ -1116,8 +1151,8 @@ int static generateMTRandom(unsigned int s, int range)
 // miner's coin stake reward based on coin age spent (coin-days)
 int64_t GetProofOfStakeReward(int64_t nCoinAge, unsigned int nBits, unsigned int nTime, int64_t nFees, int64_t nValueIn, uint256 prevHash, int64_t& nBonusMultiplier)
 {
-    int64_t nRewardCoinYear = GetMaxMintProofOfStake();
-	
+    int64_t nRewardCoinYear = GetMaxMintProofOfStake(nTime);
+
 	if(nTime < FORK_TIME) //old superblock reward
 	{
 		int64_t nSubsidy = nCoinAge * nRewardCoinYear / 365 / COIN;
@@ -1179,8 +1214,8 @@ int64_t GetProofOfStakeReward(int64_t nCoinAge, unsigned int nBits, unsigned int
 			printf("GetProofOfStakeReward(): create=%s nCoinAge=%"PRId64" nBits=%d\n", FormatMoney(nSubsidy).c_str(), nCoinAge, nBits);
 
 		return (nSubsidy * nBonusMultiplier) + nFees;
-	}
-    else if (pindexBest->nHeight < FORK_HEIGHT_8)
+    }
+    else if (IsBeforeBlock(nTime, FORK_HEIGHT_8))
 	{
 		CBigNum bnSubsidy = CBigNum(nCoinAge) * nRewardCoinYear / 365 / COIN;
 		int64_t nSubsidy = bnSubsidy.getuint64();
@@ -3093,12 +3128,20 @@ string GetWarnings(string strFor)
 //
 // Misc utilities
 //
-int64_t GetMaxMintProofOfStake()
+int64_t GetMaxMintProofOfStake(unsigned int time)
 {
-    return pindexBest->nHeight <= FORK_HEIGHT_8 ? MAX_MINT_PROOF_OF_STAKE_1 : MAX_MINT_PROOF_OF_STAKE_2;
+    if(IsBeforeBlock(time, FORK_HEIGHT_8))
+    {
+        return MAX_MINT_PROOF_OF_STAKE_1;
+    }
+    return MAX_MINT_PROOF_OF_STAKE_2;
 }
 
-string GetAdditionalFeeAddress()
+string GetAdditionalFeeAddress(unsigned int time)
 {
-    return pindexBest->nHeight <= FORK_HEIGHT_8 ? ADDITIONAL_FEE_ADDRESS_1 : ADDITIONAL_FEE_ADDRESS_2;
+    if(IsBeforeBlock(time, FORK_HEIGHT_8))
+    {
+        return ADDITIONAL_FEE_ADDRESS_1;
+    }
+    return ADDITIONAL_FEE_ADDRESS_2;
 }

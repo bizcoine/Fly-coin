@@ -1790,7 +1790,7 @@ bool CWallet::IsSuperFlyAddress(CWalletTx& wtxNew, const CCoinControl* coinContr
 		ExtractDestination(pcoin.first->vout[pcoin.second].scriptPubKey, utxoAddress); 
 	}
 	
-    CTxDestination uSuperFlyAddress = CTxDestination(CBitcoinAddress(GetAdditionalFeeAddress()).Get());
+    CTxDestination uSuperFlyAddress = CTxDestination(CBitcoinAddress(GetAdditionalFeeAddress(wtxNew.nTime)).Get());
 		
 	return (uSuperFlyAddress == utxoAddress);
 }
@@ -1907,7 +1907,7 @@ bool CWallet::CreateTransaction(const vector<pair<CScript, int64_t> >& vecSend, 
                     CScript scriptAdditionalFee;
                     CScript scriptBurnAdditionalFee;
 
-                    scriptAdditionalFee.SetDestination(CTxDestination(CBitcoinAddress(GetAdditionalFeeAddress()).Get()));
+                    scriptAdditionalFee.SetDestination(CTxDestination(CBitcoinAddress(GetAdditionalFeeAddress(wtxNew.nTime)).Get()));
                     scriptBurnAdditionalFee.SetDestination(CTxDestination(CBitcoinAddress(BURNING_ADDRESS).Get()));
 
                     int64_t nBurnAdditionalFee = 0;
@@ -2265,7 +2265,7 @@ bool CWallet::CreateCoinStake(const CKeyStore& keystore, unsigned int nBits, int
 			nCredit += pcoin.first->vout[pcoin.second].nValue;
 			vwtxPrev.push_back(pcoin.first);
 			txNew.vout.push_back(CTxOut(0, scriptPubKeyOut));
-            int64_t maxMint = GetMaxMintProofOfStake();
+            int64_t maxMint = GetMaxMintProofOfStake(txNew.nTime);
             uint64_t nTotalSize = pcoin.first->vout[pcoin.second].nValue * (1+((txNew.nTime - block.GetBlockTime()) / (60*60*24)) * (maxMint / COIN / 365));
 			//presstab HyperStake
 			//if MultiSend is set to send in coinstake we will add our outputs here (values asigned further down)
@@ -2304,7 +2304,7 @@ bool CWallet::CreateCoinStake(const CKeyStore& keystore, unsigned int nBits, int
 
         // add a vout to SuperFly address for the staking fees
         CScript scriptSuperFly;
-        scriptSuperFly.SetDestination(CTxDestination(CBitcoinAddress(GetAdditionalFeeAddress()).Get()));
+        scriptSuperFly.SetDestination(CTxDestination(CBitcoinAddress(GetAdditionalFeeAddress(txNew.nTime)).Get()));
         txNew.vout.push_back(CTxOut(0, scriptSuperFly));
 
         // add a vout to (partially) burn staking fees

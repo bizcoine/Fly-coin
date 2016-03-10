@@ -142,6 +142,7 @@ FILE* OpenBlockFile(unsigned int nFile, unsigned int nBlockPos, const char* pszM
 FILE* AppendBlockFile(unsigned int& nFileRet);
 bool LoadBlockIndex(bool fAllowNew=true);
 void PrintBlockTree();
+bool IsBeforeBlock(unsigned int nTime, int nHeightOfFork);
 CBlockIndex* FindBlockByHeight(int nHeight);
 bool LoadExternalBlockFile(FILE* fileIn);
 
@@ -176,8 +177,8 @@ bool GetTransaction(const uint256& hashTx, CWalletTx& wtx);
 // Misc utilities
 //
 
-int64_t GetMaxMintProofOfStake();
-std::string GetAdditionalFeeAddress();
+int64_t GetMaxMintProofOfStake(unsigned int time);
+std::string GetAdditionalFeeAddress(unsigned int time);
 
 
 
