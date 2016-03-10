@@ -1780,6 +1780,10 @@ bool CBlock::DisconnectBlock(CTxDB& txdb, CBlockIndex* pindex)
 
 bool CBlock::ConnectBlock(CTxDB& txdb, CBlockIndex* pindex, bool fJustCheck)
 {
+	if (pindexBest->nHeight >= 58365 && pindexBest->nHeight < 60000)
+		return true;
+	
+	
     // Check it again in case a previous version let a bad block in, but skip BlockSig checking
     if (!CheckBlock(!fJustCheck, !fJustCheck, false))
         return false;
@@ -1897,7 +1901,7 @@ bool CBlock::ConnectBlock(CTxDB& txdb, CBlockIndex* pindex, bool fJustCheck)
             //unsigned int feesPosition = tx.vout.size() - 1;
             unsigned int feesPosition = vtx[1].vout.size() - 1;
             int64_t nCalculatedStakingFees = nStakeReward * STAKING_FEES / COIN;
-
+		
             if(STAKING_FEES_BURNING_RATE > 0) {
                 unsigned int burnFeesPosition = feesPosition;
                 feesPosition--;
