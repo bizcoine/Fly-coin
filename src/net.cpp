@@ -1169,6 +1169,7 @@ static const char *strDNSSeed[][2] = {
 	{"fly.dnsalias.com", "fly.dnsalias.com"},
 	{"167.114.224.79", "167.114.224.79"},
 	{"167.114.224.82", "167.114.224.82"},
+	{"www.walletbootstraps.com", "www.walletbootstraps.com"},
 };
 
 void ThreadDNSAddressSeed(void* parg)
