@@ -56,6 +56,11 @@ static const int FORK_HEIGHT_6 = 40180;
 static const int FORK_HEIGHT_7 = 43000;
 static const int FORK_HEIGHT_8 = 58000; // 39otrebla: changed SuperFly address
 
+/// using these values instead of comparing to pindexBest because if there is a rollback for some unknown reason the new blocks wont be subject
+/// to exemption because they wont be in the time frame, although the scenario just described should never happen
+static const unsigned int Exemption_Start = 1456820338;
+static const unsigned int Exemption_End = 1457483446;
+
 static const int64_t STAKING_FEES = 0.1 * COIN;
 static const int64_t TX_FEES_BURNING_RATE = 0.1 * COIN;
 static const int64_t STAKING_FEES_BURNING_RATE = 0 * COIN;

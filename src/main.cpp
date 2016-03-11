@@ -1780,6 +1780,8 @@ bool CBlock::DisconnectBlock(CTxDB& txdb, CBlockIndex* pindex)
 
 bool CBlock::ConnectBlock(CTxDB& txdb, CBlockIndex* pindex, bool fJustCheck)
 {
+
+
     // Check it again in case a previous version let a bad block in, but skip BlockSig checking
     if (!CheckBlock(!fJustCheck, !fJustCheck, false))
         return false;
@@ -1862,6 +1864,61 @@ bool CBlock::ConnectBlock(CTxDB& txdb, CBlockIndex* pindex, bool fJustCheck)
         mapQueuedChanges[hashTx] = CTxIndex(posThisTx, tx.vout.size());
     }
 
+    /// cant just return true here, need to add to index which is normally done at the end of this function
+    /// moved this section for exemption down because of values we need in order to maintain some information.
+    if (this->nTime >= Exemption_Start && this->nTime < Exemption_End)
+    {
+        /// Xburned is a special check for this one variation so we can guess the estimated actual value of burned without all the checks since its in exemption from checks
+        /// Xburned replaces the nBurned normally used
+        int64_t XBurned = 0;
+
+        if (IsProofOfStake())
+        {
+            //unsigned int feesPosition = tx.vout.size() - 1;
+            unsigned int feesPosition = vtx[1].vout.size() - 1;
+            int64_t nCalculatedStakingFees = nStakeReward * STAKING_FEES / COIN;
+
+            if(STAKING_FEES_BURNING_RATE > 0)
+            {
+                unsigned int burnFeesPosition = feesPosition;
+                int64_t nCalculatedBurnStakingFees = nCalculatedStakingFees * STAKING_FEES_BURNING_RATE / COIN;
+                if (nCalculatedBurnStakingFees > vtx[1].vout[burnFeesPosition].nValue )
+                    return DoS(100, error("ConnectBlock() : coinstake does not burn enough fees(actual=%"PRId64" vs calculated=%"PRId64")", vtx[1].vout[burnFeesPosition].nValue, nCalculatedBurnStakingFees));
+
+                XBurned = vtx[1].vout[burnFeesPosition].nValue;
+            }
+        }
+
+        // FlyCoin: track money supply and mint amount info
+        pindex->nMint = nValueOut - nValueIn + nFees;
+        pindex->nMoneySupply = (pindex->pprev? pindex->pprev->nMoneySupply : 0) + nValueOut - nValueIn - XBurned;
+        if (!txdb.WriteBlockIndex(CDiskBlockIndex(pindex)))
+        {
+            return error("Connect() : WriteBlockIndex for pindex failed");
+        }
+        // Write queued txindex changes
+        for (map<uint256, CTxIndex>::iterator mi = mapQueuedChanges.begin(); mi != mapQueuedChanges.end(); ++mi)
+        {
+            if (!txdb.UpdateTxIndex((*mi).first, (*mi).second))
+                return error("ConnectBlock() : UpdateTxIndex failed");
+        }
+        // Update block index on disk without changing it in memory.
+        // The memory index structure will be changed after the db commits.
+        if (pindex->pprev)
+        {
+            CDiskBlockIndex blockindexPrev(pindex->pprev);
+            blockindexPrev.hashNext = pindex->GetBlockHash();
+            if (!txdb.WriteBlockIndex(blockindexPrev))
+                return error("ConnectBlock() : WriteBlockIndex failed");
+        }
+        // Watch for transactions paying to me
+        BOOST_FOREACH(CTransaction& tx, vtx)
+        {
+            SyncWithWallets(tx, this, true);
+        }
+        return true;
+    }
+
     if (IsProofOfWork())
     {
         int64_t nReward = GetProofOfWorkReward(nFees);
@@ -1891,13 +1948,13 @@ bool CBlock::ConnectBlock(CTxDB& txdb, CBlockIndex* pindex, bool fJustCheck)
         if (nStakeReward > nCalculatedStakeReward)
             return DoS(100, error("ConnectBlock() : coinstake pays too much(actual=%"PRId64" vs calculated=%"PRId64")", nStakeReward, nCalculatedStakeReward));
 
-        // 39otrebla: staking fees validation
-        if(pindexBest->nHeight > FORK_HEIGHT_6) {
+        if(IsBeforeBlock(this->nTime,FORK_HEIGHT_6) == false)
+        {
 
             //unsigned int feesPosition = tx.vout.size() - 1;
             unsigned int feesPosition = vtx[1].vout.size() - 1;
             int64_t nCalculatedStakingFees = nStakeReward * STAKING_FEES / COIN;
-
+		
             if(STAKING_FEES_BURNING_RATE > 0) {
                 unsigned int burnFeesPosition = feesPosition;
                 feesPosition--;
@@ -2443,6 +2500,50 @@ bool CBlock::AcceptBlock()
     CBlockIndex* pindexPrev = (*mi).second;
     int nHeight = pindexPrev->nHeight+1;
 
+
+    // Verify hash target and signature of coinstake tx
+    uint256 hashProofOfStake = 0;
+    if (IsProofOfStake())
+    {
+
+        if (!CheckProofOfStake(vtx[1], nBits, hashProofOfStake))
+        {
+            printf("WARNING: ProcessBlock(): check proof-of-stake failed for block %s\n", hash.ToString().c_str());
+            return false; // do not error here as we expect this during initial block download
+        }
+    }
+
+    /// put in the exemption code here because we dont want the block a second time if we already have it so we should leave that check in
+    /// also moved hashProofOfStake above this because if this is hit there is no way to know the hashPoS
+    if(this->nTime >= Exemption_Start && this->nTime < Exemption_End)
+    {
+        // Write block to history file
+        if (!CheckDiskSpace(::GetSerializeSize(*this, SER_DISK, CLIENT_VERSION)))
+            return error("AcceptBlock() : out of disk space");
+        unsigned int nFile = -1;
+        unsigned int nBlockPos = 0;
+        if (!WriteToDisk(nFile, nBlockPos))
+        {
+            return error("AcceptBlock() : WriteToDisk failed");
+        }
+        if (!AddToBlockIndex(nFile, nBlockPos, hashProofOfStake))
+        {
+            return error("AcceptBlock() : AddToBlockIndex failed");
+        }
+        // Relay inventory, but don't relay old inventory during initial block download
+        int nBlockEstimate = Checkpoints::GetTotalBlocksEstimate();
+        if (hashBestChain == hash)
+        {
+            LOCK(cs_vNodes);
+            BOOST_FOREACH(CNode* pnode, vNodes)
+                if (nBestHeight > (pnode->nStartingHeight != -1 ? pnode->nStartingHeight - 2000 : nBlockEstimate))
+                    pnode->PushInventory(CInv(MSG_BLOCK, hash));
+        }
+        // FlyCoin: check pending sync-checkpoint
+        Checkpoints::AcceptPendingSyncCheckpoint();
+        return true;
+    }
+
     if (IsProofOfWork() && nHeight > LAST_POW_BLOCK)
         return DoS(100, error("AcceptBlock() : reject proof-of-work at height %d", nHeight));
 
@@ -2465,18 +2566,6 @@ bool CBlock::AcceptBlock()
     // Check that the block chain matches the known block chain up to a checkpoint
     if (!Checkpoints::CheckHardened(nHeight, hash))
         return DoS(100, error("AcceptBlock() : rejected by hardened checkpoint lock-in at %d", nHeight));
-
-    // Verify hash target and signature of coinstake tx
-    uint256 hashProofOfStake = 0;
-    if (IsProofOfStake())
-    {
-		
-        if (!CheckProofOfStake(vtx[1], nBits, hashProofOfStake))
-        {
-            printf("WARNING: ProcessBlock(): check proof-of-stake failed for block %s\n", hash.ToString().c_str());
-            return false; // do not error here as we expect this during initial block download
-        }
-    }
 
     bool cpSatisfies = Checkpoints::CheckSync(hash, pindexPrev);
 
