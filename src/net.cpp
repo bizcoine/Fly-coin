@@ -1170,7 +1170,7 @@ static const char *strDNSSeed[][2] = {
 	{"167.114.224.79", "167.114.224.79"},
 	{"167.114.224.82", "167.114.224.82"},
 	{"www.walletbootstraps.com", "www.walletbootstraps.com"},
-    {"184.6.147.2", "184.6.147.2"}
+	{"184.6.147.2", "184.6.147.2"}
 };
 
 void ThreadDNSAddressSeed(void* parg)
