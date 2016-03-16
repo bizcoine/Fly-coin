@@ -12,7 +12,7 @@
 #include "util.h"
 #include "ui_interface.h"
 
-bool AlreadyHave(CTxDB& txdb, const CInv& inv);
+//bool AlreadyHave(CTxDB& txdb, const CInv& inv);
 bool ProcessMessages(CNode* pfrom);
 bool SendMessages(CNode* pto, bool fSendTrickle);
 

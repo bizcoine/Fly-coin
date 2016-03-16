@@ -2281,7 +2281,7 @@ Value cclistcoins(const Array& params, bool fHelp)
 		if(dAge < nStakeMinAge)
 			nWeight = 0;
 		coutput.push_back(Pair("Weight", int(nWeight)));
-        int64_t maxMint = GetMaxMintProofOfStake();
+        int64_t maxMint = GetMaxMintProofOfStake(pindex->nTime);
         double nReward = (maxMint/COIN) / 365 * dAge * dAmount;
 		nReward = min(nReward, double(30));
 		coutput.push_back(Pair("Potential Stake", nReward));

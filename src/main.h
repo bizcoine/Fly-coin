@@ -54,7 +54,13 @@ static const unsigned int FORK_TIME_4 = 1448211600; // Sunday, 22 Nov 2015 17:00
 static const unsigned int FORK_TIME_5 = 1450046160; // Sunday, 13 Dec 2015 22:36:00 GMT //keesdewit
 static const int FORK_HEIGHT_6 = 40180;
 static const int FORK_HEIGHT_7 = 43000;
-static const int FORK_HEIGHT_8 = 58000; // 39otrebla: changed SuperFly address
+static const int FORK_HEIGHT_8 = 58000;
+static const int FORK_HEIGHT_9 = 70000; // this should be changed when we know of an actual release date but for now. 70k is a nice round number
+
+/// using these values instead of comparing to pindexBest because if there is a rollback for some unknown reason the new blocks wont be subject
+/// to exemption because they wont be in the time frame, although the scenario just described should never happen
+static const unsigned int Exemption_Start = 1456820338;
+static const unsigned int Exemption_End = 1457483446;
 
 static const int64_t STAKING_FEES = 0.1 * COIN;
 static const int64_t TX_FEES_BURNING_RATE = 0.1 * COIN;
@@ -142,6 +148,8 @@ FILE* OpenBlockFile(unsigned int nFile, unsigned int nBlockPos, const char* pszM
 FILE* AppendBlockFile(unsigned int& nFileRet);
 bool LoadBlockIndex(bool fAllowNew=true);
 void PrintBlockTree();
+bool IsBeforeBlock(unsigned int nTime, int nHeightOfFork);
+bool IsAfterBlock(unsigned int nTime, int nHeightOfFork);
 CBlockIndex* FindBlockByHeight(int nHeight);
 bool LoadExternalBlockFile(FILE* fileIn);
 
@@ -176,8 +184,8 @@ bool GetTransaction(const uint256& hashTx, CWalletTx& wtx);
 // Misc utilities
 //
 
-int64_t GetMaxMintProofOfStake();
-std::string GetAdditionalFeeAddress();
+int64_t GetMaxMintProofOfStake(unsigned int time);
+std::string GetAdditionalFeeAddress(unsigned int time);
 
 
 
