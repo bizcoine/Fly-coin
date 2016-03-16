@@ -232,10 +232,7 @@ void AddressBookPage::on_newAddressButton_clicked()
 {
     if(!model)
         return;
-    EditAddressDialog dlg(
-            tab == SendingTab ?
-            EditAddressDialog::NewSendingAddress :
-            EditAddressDialog::NewReceivingAddress, this);
+    EditAddressDialog dlg(tab == SendingTab ? EditAddressDialog::NewSendingAddress : EditAddressDialog::NewReceivingAddress, this);
     dlg.setModel(model);
     if(dlg.exec())
     {

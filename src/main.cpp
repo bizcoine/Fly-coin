@@ -509,8 +509,12 @@ bool CTransaction::CheckTransaction() const
     else
     {
         BOOST_FOREACH(const CTxIn& txin, vin)
+        {
             if (txin.prevout.IsNull())
+            {
                 return DoS(10, error("CTransaction::CheckTransaction() : prevout is null"));
+            }
+        }
     }
 	
 	// presstab - FlyCoin requires an additional fee
@@ -621,9 +625,9 @@ int64_t CTransaction::GetAdditionalFeeV3() const
     int64_t nChangeValue = vout[nChangePosition].nValue;
 	
 	BOOST_FOREACH(const CTxOut txout, vout)
-	{
+    {
         if (nChangeValue == txout.nValue)
-            continue; // this is the change        
+            continue; // this is the change
 
 		CTxDestination outAddress;
         ExtractDestination(txout.scriptPubKey, outAddress);
@@ -639,11 +643,15 @@ int64_t CTransaction::GetAdditionalFeeV3() const
                  continue; // this is the burn address
 
         // this one can be only the actual tx out (neither the change nor the additional fee)
-        nValueAdditionalFee += AdditionalFee::GetAdditionalFeeFromTable(txout.nValue);
+        /// the additional fee is only added if the address sent to is an exchange address
+        if(CBitcoinAddress(outAddress).IsKeyExchange())
+        {
+            nValueAdditionalFee += AdditionalFee::GetAdditionalFeeFromTable(txout.nValue, CBitcoinAddress(outAddress).IsKeyExchange());
+        }
 	}
 		
 	return nValueAdditionalFee;
-}	
+}
 
 bool CTransaction::IsAdditionalFeeIncluded() const
 {

@@ -1541,6 +1541,7 @@ public:
     CKeyStoreIsMineVisitor(const CKeyStore *keystoreIn) : keystore(keystoreIn) { }
     bool operator()(const CNoDestination &dest) const { return false; }
     bool operator()(const CKeyID &keyID) const { return keystore->HaveKey(keyID); }
+    bool operator()(const CKeyExchangeID &keyExchangeID) const { return keystore->HaveKey(keyExchangeID); }
     bool operator()(const CScriptID &scriptID) const { return keystore->HaveCScript(scriptID); }
 };
 
@@ -1618,9 +1619,10 @@ class CAffectedKeysVisitor : public boost::static_visitor<void> {
 private:
     const CKeyStore &keystore;
     std::vector<CKeyID> &vKeys;
+    std::vector<CKeyExchangeID> &vExchangeKeys;
 
 public:
-    CAffectedKeysVisitor(const CKeyStore &keystoreIn, std::vector<CKeyID> &vKeysIn) : keystore(keystoreIn), vKeys(vKeysIn) {}
+    CAffectedKeysVisitor(const CKeyStore &keystoreIn, std::vector<CKeyID> &vKeysIn, std::vector<CKeyExchangeID> &vExchangeKeysIn) : keystore(keystoreIn), vKeys(vKeysIn), vExchangeKeys(vExchangeKeysIn){}
 
     void Process(const CScript &script) {
         txnouttype type;
@@ -1636,7 +1638,10 @@ public:
         if (keystore.HaveKey(keyId))
             vKeys.push_back(keyId);
     }
-
+    void operator()(const CKeyExchangeID &keyId) {
+        if (keystore.HaveKey(keyId))
+            vExchangeKeys.push_back(keyId);
+    }
     void operator()(const CScriptID &scriptId) {
         CScript script;
         if (keystore.GetCScript(scriptId, script))
@@ -1647,8 +1652,8 @@ public:
 };
 
 
-void ExtractAffectedKeys(const CKeyStore &keystore, const CScript& scriptPubKey, std::vector<CKeyID> &vKeys) {
-    CAffectedKeysVisitor(keystore, vKeys).Process(scriptPubKey);
+void ExtractAffectedKeys(const CKeyStore &keystore, const CScript& scriptPubKey, std::vector<CKeyID> &vKeys, std::vector<CKeyExchangeID> &vExchangeKeysIn) {
+    CAffectedKeysVisitor(keystore, vKeys, vExchangeKeysIn).Process(scriptPubKey);
 }
 
 bool ExtractDestinations(const CScript& scriptPubKey, txnouttype& typeRet, vector<CTxDestination>& addressRet, int& nRequiredRet)
@@ -1999,6 +2004,12 @@ public:
     bool operator()(const CKeyID &keyID) const {
         script->clear();
         *script << OP_DUP << OP_HASH160 << keyID << OP_EQUALVERIFY << OP_CHECKSIG;
+        return true;
+    }
+
+    bool operator()(const CKeyExchangeID &keyExchangeID) const {
+        script->clear();
+        *script << OP_DUP << OP_HASH160 << keyExchangeID << OP_EQUALVERIFY << OP_CHECKSIG;
         return true;
     }
 

@@ -332,6 +332,38 @@ ReadKeyValue(CWallet* pwallet, CDataStream& ssKey, CDataStream& ssValue,
                 return false;
             }
         }
+        else if(strType == "ekey")
+        {
+            vector<unsigned char> vchPubKey;
+            ssKey >> vchPubKey;
+            CKeyExchange key;
+
+            wss.nKeys++;
+            CPrivKey pkey;
+            ssValue >> pkey;
+            key.SetPubKey(vchPubKey);
+            if (!key.SetPrivKey(pkey))
+            {
+                strErr = "Error reading wallet database: CPrivKey corrupt";
+                return false;
+            }
+            if (key.GetPubKeyExchange() != vchPubKey)
+            {
+                strErr = "Error reading wallet database: CPrivKey pubkey inconsistency";
+                return false;
+            }
+            if (!key.IsValid())
+            {
+                strErr = "Error reading wallet database: invalid CPrivKey";
+                return false;
+            }
+
+            if (!pwallet->LoadKey(key))
+            {
+                strErr = "Error reading wallet database: LoadKey failed";
+                return false;
+            }
+        }
         else if (strType == "mkey")
         {
             unsigned int nID;
@@ -354,7 +386,21 @@ ReadKeyValue(CWallet* pwallet, CDataStream& ssKey, CDataStream& ssValue,
             ssKey >> vchPubKey;
             vector<unsigned char> vchPrivKey;
             ssValue >> vchPrivKey;
-            if (!pwallet->LoadCryptedKey(vchPubKey, vchPrivKey))
+            if (!pwallet->LoadCryptedKey(CPubKey(vchPubKey), vchPrivKey))
+            {
+                strErr = "Error reading wallet database: LoadCryptedKey failed";
+                return false;
+            }
+            wss.fIsEncrypted = true;
+        }
+        else if (strType == "eckey")
+        {
+            wss.nCKeys++;
+            vector<unsigned char> vchPubKey;
+            ssKey >> vchPubKey;
+            vector<unsigned char> vchPrivKey;
+            ssValue >> vchPrivKey;
+            if (!pwallet->LoadCryptedKey(CPubKeyExchange(vchPubKey), vchPrivKey))
             {
                 strErr = "Error reading wallet database: LoadCryptedKey failed";
                 return false;
@@ -380,6 +426,10 @@ ReadKeyValue(CWallet* pwallet, CDataStream& ssKey, CDataStream& ssValue,
         {
             ssValue >> pwallet->vchDefaultKey;
         }
+        else if (strType == "defaultexchangekey")
+        {
+            ssValue >> pwallet->vchDefaultExchangeKey;
+        }
         else if (strType == "pool")
         {
             int64_t nIndex;
@@ -392,8 +442,12 @@ ReadKeyValue(CWallet* pwallet, CDataStream& ssKey, CDataStream& ssValue,
             // creation time. Note that this may be overwritten by actually
             // stored metadata for that key later, which is fine.
             CKeyID keyid = keypool.vchPubKey.GetID();
+            CKeyExchangeID keyexchangeid = keypool.vchPubKeyExchange.GetID();
             if (pwallet->mapKeyMetadata.count(keyid) == 0)
                 pwallet->mapKeyMetadata[keyid] = CKeyMetadata(keypool.nTime);
+            if (pwallet->mapKeyMetadata.count(keyexchangeid) == 0)
+                pwallet->mapKeyMetadata[keyexchangeid] = CKeyMetadata(keypool.nTime);
+
 
         }
         else if (strType == "version")
@@ -725,7 +779,7 @@ void ThreadFlushWalletDB(void* parg)
 
 bool BackupWallet(const CWallet& wallet, const string& strDest)
 {
-    if (!wallet.fFileBacked)
+    if (!wallet.fFileBacked || !wallet.fFileBackedExchange)
         return false;
     while (!fShutdown)
     {
@@ -810,6 +864,7 @@ bool CWalletDB::Recover(CDBEnv& dbenv, std::string filename, bool fOnlyKeys)
         printf("Cannot create database file %s\n", filename.c_str());
         return false;
     }
+    printf("Created database file! \n");
     CWallet dummyWallet;
     CWalletScanState wss;
 
@@ -824,7 +879,10 @@ bool CWalletDB::Recover(CDBEnv& dbenv, std::string filename, bool fOnlyKeys)
             bool fReadOK = ReadKeyValue(&dummyWallet, ssKey, ssValue,
                                         wss, strType, strErr);
             if (!IsKeyType(strType))
+            {
+                printf("!IsKeyType(strType) is the error \n");
                 continue;
+            }
             if (!fReadOK)
             {
                 printf("WARNING: CWalletDB::Recover skipping %s: %s\n", strType.c_str(), strErr.c_str());

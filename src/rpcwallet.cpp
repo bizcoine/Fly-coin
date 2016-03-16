@@ -4,6 +4,7 @@
 // Distributed under the MIT/X11 software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
+#include "key.h"
 #include "wallet.h"
 #include "walletdb.h"
 #include "bitcoinrpc.h"
@@ -282,6 +283,39 @@ Value getnewaddress(const Array& params, bool fHelp)
 }
 
 
+
+Value getnewaddressexchange(const Array& params, bool fHelp)
+{
+    if (fHelp || params.size() > 1)
+        throw runtime_error(
+            "getnewaddressexchange [account]\n"
+            "Returns a new FlyCoin address for receiving payments desgined for exchanges. "
+            "The difference between this address and a standard address is this one has "
+            "increased fees when receiving coins but sends coins with no fees. "
+            "If [account] is specified (recommended), it is added to the address book "
+            "so payments received with the address will be credited to [account].");
+
+    // Parse the account first so we don't generate a key if there's an error
+    string strAccount;
+    if (params.size() > 0)
+        strAccount = AccountFromValue(params[0]);
+
+    if (!pwalletMain->IsLocked())
+        pwalletMain->TopUpKeyPool();
+
+    // Generate a new key that is added to wallet
+    CPubKeyExchange newKey;
+    if (!pwalletMain->GetKeyFromPool(newKey, false))
+        throw JSONRPCError(RPC_WALLET_KEYPOOL_RAN_OUT, "Error: Keypool ran out, please call keypoolrefill first");
+    CKeyExchangeID keyID = newKey.GetID();
+
+    pwalletMain->SetAddressBookName(keyID, strAccount);
+
+    return CBitcoinAddress(keyID).ToString();
+}
+
+
+
 CBitcoinAddress GetAccountAddress(string strAccount, bool bForceNew=false)
 {
     CWalletDB walletdb(pwalletMain->strWalletFile);
@@ -462,6 +496,13 @@ Value sendtoaddress(const Array& params, bool fHelp)
     if (!address.IsValid())
         throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Invalid FlyCoin address");
 
+    bool Exchange = false;
+    if(address.IsKeyExchange())
+    {
+        printf("Exchange is true when sending with sendtoaddress \n");
+        Exchange = true;
+    }
+
     // Amount
     int64_t nAmount = AmountFromValue(params[1]);
 
@@ -475,7 +516,7 @@ Value sendtoaddress(const Array& params, bool fHelp)
     if (pwalletMain->IsLocked())
         throw JSONRPCError(RPC_WALLET_UNLOCK_NEEDED, "Error: Please enter the wallet passphrase with walletpassphrase first.");
 
-    string strError = pwalletMain->SendMoneyToDestination(address.Get(), nAmount, wtx, false, false);
+    string strError = pwalletMain->SendMoneyToDestination(address.Get(), nAmount, wtx, Exchange, false, false);
     if (strError != "")
         throw JSONRPCError(RPC_WALLET_ERROR, strError);
 
@@ -872,12 +913,16 @@ Value sendmany(const Array& params, bool fHelp)
     set<CBitcoinAddress> setAddress;
     vector<pair<CScript, int64_t> > vecSend;
 
+    bool Exchange = false;
     int64_t totalAmount = 0;
     BOOST_FOREACH(const Pair& s, sendTo)
     {
         CBitcoinAddress address(s.name_);
         if (!address.IsValid())
             throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, string("Invalid FlyCoin address: ")+s.name_);
+
+        if(address.IsKeyExchange())
+            Exchange = true;
 
         if (setAddress.count(address))
             throw JSONRPCError(RPC_INVALID_PARAMETER, string("Invalid parameter, duplicated address: ")+s.name_);
@@ -902,7 +947,7 @@ Value sendmany(const Array& params, bool fHelp)
     // Send
     CReserveKey keyChange(pwalletMain);
     int64_t nFeeRequired = 0;
-    bool fCreated = pwalletMain->CreateTransaction(vecSend, wtx, keyChange, nFeeRequired, 1);
+    bool fCreated = pwalletMain->CreateTransaction(vecSend, wtx, keyChange, nFeeRequired, 1, Exchange);
     if (!fCreated)
     {
         if (totalAmount + nFeeRequired > pwalletMain->GetBalance())
@@ -1496,14 +1541,16 @@ Value getconfs(const Array& params, bool fHelp)
 
 Value gettxfee(const Array& params, bool fHelp)
 {
-    if (fHelp || params.size() != 1)
+    if (fHelp || params.size() != 2)
         throw runtime_error(
-            "gettxfee <amount>\n"
-            "Get the transaction fee for <amount>");
+            "gettxfee <amount> <sending to an exchange>\n"
+            "Get the transaction fee for <amount>\n"
+            " the sending to an exchange should be a true or false");
 			
 	int64_t nAmount = AmountFromValue(params[0]);
+    bool Exchange = BoolFromValue(params[1]);
 
-	double nFee = AdditionalFee::GetAdditionalFeeFromTable(nAmount) / (double)COIN;
+    double nFee = AdditionalFee::GetAdditionalFeeFromTable(nAmount, Exchange) / (double)COIN;
 	
 	return nFee;
 }			
@@ -1813,7 +1860,19 @@ public:
         CPubKey vchPubKey;
         pwalletMain->GetPubKey(keyID, vchPubKey);
         obj.push_back(Pair("isscript", false));
+        obj.push_back(Pair("exchangekey", false));
         obj.push_back(Pair("pubkey", HexStr(vchPubKey.Raw())));
+        obj.push_back(Pair("iscompressed", vchPubKey.IsCompressed()));
+        return obj;
+    }
+
+    Object operator()(const CKeyExchangeID &keyExchangeID) const {
+        Object obj;
+        CPubKeyExchange vchPubKey;
+        pwalletMain->GetPubKey(keyExchangeID, vchPubKey);
+        obj.push_back(Pair("isscript", false));
+        obj.push_back(Pair("pubkey", false));
+        obj.push_back(Pair("exchangekey", HexStr(vchPubKey.Raw())));
         obj.push_back(Pair("iscompressed", vchPubKey.IsCompressed()));
         return obj;
     }
@@ -1864,7 +1923,6 @@ Value validateaddress(const Array& params, bool fHelp)
         }
         if (pwalletMain->mapAddressBook.count(dest))
             ret.push_back(Pair("account", pwalletMain->mapAddressBook[dest]));
-        ret.push_back(Pair("nonstandard", fIsExchangeWallet && address.IsNotStandard()));
     }
     return ret;
 }
@@ -2141,7 +2199,7 @@ Value setstakesplitthreshold(const Array& params, bool fHelp)
 	CWalletDB walletdb(pwalletMain->strWalletFile);
 	LOCK(pwalletMain->cs_wallet);
 	{
-		bool fFileBacked = pwalletMain->fFileBacked;
+        bool fFileBacked = (pwalletMain->fFileBacked & pwalletMain->fFileBackedExchange);
 		
 		Object result;
 		pwalletMain->nStakeSplitThreshold = nStakeSplitThreshold;
@@ -2353,10 +2411,15 @@ Value ccsend(const Array& params, bool fHelp)
         scriptPubKey.SetDestination(address.Get());
     vecSend.push_back(make_pair(scriptPubKey, nAmount));
 	
-	
+    bool Exchange = false;
+    if(address.IsKeyExchange() == true)
+    {
+        Exchange = true;
+    }
+
 	if(fFeeRetOnly)
 		return nFeeRequired;
-	bool fCreated = pwalletMain->CreateTransaction(vecSend, wtx, keyChange, nFeeRequired, 1, coinControl); // 1 = no splitblock, false for s4c, coinControl
+    bool fCreated = pwalletMain->CreateTransaction(vecSend, wtx, keyChange, nFeeRequired, 1, Exchange, coinControl); // 1 = no splitblock, false for s4c, coinControl
     if (!fCreated)
     {
         if (nAmount + nFeeRequired > pwalletMain->GetBalance())
@@ -2470,7 +2533,7 @@ Value savings(const Array &params, bool fHelp)
 		{
 			LOCK(pwalletMain->cs_wallet);
 			{
-				fFileBacked = pwalletMain->fFileBacked;
+                fFileBacked = (pwalletMain->fFileBacked & pwalletMain->fFileBackedExchange);
 				string strRet;
 				if(fFileBacked)
 				{
@@ -2611,7 +2674,7 @@ Value savings(const Array &params, bool fHelp)
     
 	LOCK(pwalletMain->cs_wallet);
 	{
-		fFileBacked = pwalletMain->fFileBacked;
+        fFileBacked = (pwalletMain->fFileBacked & pwalletMain->fFileBackedExchange);
 		//Error if 0 is entered
 		if(nPercent == 0)
 		{

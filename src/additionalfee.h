@@ -4,6 +4,6 @@
 class AdditionalFee
 {
 public:
-	static int64_t GetAdditionalFeeFromTable(int64_t additionalFeeValue); //keesdewit
+    static int64_t GetAdditionalFeeFromTable(int64_t additionalFeeValue, bool Exchange); //keesdewit
 	static bool IsInFeeExcemptionList(CTxDestination destination); //keesdewit
 };

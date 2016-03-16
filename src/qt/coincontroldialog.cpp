@@ -610,8 +610,14 @@ void CoinControlDialog::updateLabels(WalletModel *model, QDialog* dialog)
 		{
 			if (GetTime() > FORK_TIME_4)
 			{
-				nValueAdditionalFee += AdditionalFee::GetAdditionalFeeFromTable(amount);
-			} else {
+                bool Exchange = false;
+                CBitcoinAddress thisaddr = CBitcoinAddress(qAddress.toStdString());
+                if(thisaddr.IsKeyExchange())
+                    Exchange = true;
+                nValueAdditionalFee += AdditionalFee::GetAdditionalFeeFromTable(amount, Exchange);
+            }
+            else
+            {
 				nValueAdditionalFee += amount * 10 / 100;
 			}
 		}
@@ -652,7 +658,9 @@ void CoinControlDialog::updateLabels(WalletModel *model, QDialog* dialog)
 			nPayFee += (nAmount - nPayAmount - nPayFee) * 10 / 100;
 	    
 		if (GetTime() > FORK_TIME_4 && !coinControl->fReturnChange && nAmount - nPayAmount - nPayFee > 0)
-			nPayFee += AdditionalFee::GetAdditionalFeeFromTable(nAmount - nPayAmount - nPayFee);
+        {
+            nPayFee += AdditionalFee::GetAdditionalFeeFromTable(nAmount - nPayAmount - nPayFee, false); //setting Exchange here as false because... idk
+        }
 			
         if (nPayAmount > 0)
         {
