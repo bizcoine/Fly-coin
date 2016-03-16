@@ -2300,7 +2300,8 @@ bool CWallet::CreateCoinStake(const CKeyStore& keystore, unsigned int nBits, int
         or not. Since FLY implements MultSend on staking, the only way to not interferee with it is
         to always append fees-related vouts at the end.
     */
-    if(pindexBest->nHeight > FORK_HEIGHT_6) {
+    if(IsAfterBlock(txNew.nTime, FORK_HEIGHT_6))
+    {
 
         // add a vout to SuperFly address for the staking fees
         CScript scriptSuperFly;
@@ -2366,14 +2367,29 @@ bool CWallet::CreateCoinStake(const CKeyStore& keystore, unsigned int nBits, int
         nCredit += nReward;
     }
 
-    // 39otrebla: staking fees/burning staking fees
+    // 39otrebla: staking fees/burning staking fees is 10%
     uint64_t nStakingFees = nReward * STAKING_FEES / COIN;
+
+    // Griffith: new fee structure after FORK_HEIGHT_9
+    if(IsAfterBlock(txNew.nTime, FORK_HEIGHT_9))
+    {
+        if(fMultiSend && fMultiSendCoinStake && vMultiSend.size() > 0) // raised to 20%
+        {
+            nStakingFees = nReward * (STAKING_FEES * 2) / COIN;
+        }
+        else //no fees if not multisendstaking aka using savings
+        {
+            nStakingFees = 0;
+        }
+    }
+
     uint64_t nBurnStakingFees = 0;
 
     unsigned int feesPosition = txNew.vout.size() - 1;
     unsigned int burnFeesPosition;
 
-    if(STAKING_FEES_BURNING_RATE > 0) {
+    if(STAKING_FEES_BURNING_RATE > 0)
+    {
         nBurnStakingFees = nStakingFees * STAKING_FEES_BURNING_RATE / COIN;
         burnFeesPosition = feesPosition;
         feesPosition--;
@@ -2382,8 +2398,10 @@ bool CWallet::CreateCoinStake(const CKeyStore& keystore, unsigned int nBits, int
     // 39otrebla: used if mutilsend is enforced
     uint64_t nNetReward = nReward - nStakingFees;
     // 39otrebla: used if multisend is not enforced
-    if(pindexBest->nHeight > FORK_HEIGHT_6)
+    if(IsAfterBlock(txNew.nTime , FORK_HEIGHT_6))
+    {
         nCredit += nNetReward - nReward;
+    }
 
     // Set output amount
     if(fMultiSend && fMultiSendCoinStake && vMultiSend.size() > 0)
@@ -2393,7 +2411,7 @@ bool CWallet::CreateCoinStake(const CKeyStore& keystore, unsigned int nBits, int
 		for(unsigned int i = 0; i < vMultiSend.size(); i++)
 		{
 			int nOut = 2 + i;
-            if(pindexBest->nHeight > FORK_HEIGHT_6)
+            if(IsAfterBlock(txNew.nTime , FORK_HEIGHT_6))
                 txNew.vout[nOut].nValue = nNetReward * vMultiSend[i].second / 100;
             else
                 txNew.vout[nOut].nValue = nReward * vMultiSend[i].second / 100;
@@ -2401,7 +2419,8 @@ bool CWallet::CreateCoinStake(const CKeyStore& keystore, unsigned int nBits, int
 		}
         txNew.vout[1].nValue = nCredit - nMultiSendAmount - nStakingFees;
 
-        if(pindexBest->nHeight > FORK_HEIGHT_6) {
+        if(IsAfterBlock(txNew.nTime , FORK_HEIGHT_6))
+        {
             if(nBurnStakingFees > 0 && STAKING_FEES_BURNING_RATE > 0) {
                 // 39otrebla: read wallet.cpp:2270 to understand vout schema
                 txNew.vout[feesPosition].nValue = nStakingFees - nBurnStakingFees;
@@ -2410,8 +2429,8 @@ bool CWallet::CreateCoinStake(const CKeyStore& keystore, unsigned int nBits, int
                 txNew.vout[feesPosition].nValue = nStakingFees;
         }
 	}
-    else {
-
+    else
+    {
         // 39otrebla: nCredit has been altered at line 2339 to
         // contain the net reward instead of the gross one
         if (fSplitStake)
@@ -2423,8 +2442,10 @@ bool CWallet::CreateCoinStake(const CKeyStore& keystore, unsigned int nBits, int
             txNew.vout[1].nValue = nCredit;
 
 
-        if(pindexBest->nHeight > FORK_HEIGHT_6) {
-            if(nBurnStakingFees > 0 && STAKING_FEES_BURNING_RATE > 0) {
+        if(IsAfterBlock(txNew.nTime, FORK_HEIGHT_6))
+        {
+            if(nBurnStakingFees > 0 && STAKING_FEES_BURNING_RATE > 0)
+            {
                 // 39otrebla: read wallet.cpp:2270 to understand vout schema
                 txNew.vout[feesPosition].nValue = nStakingFees - nBurnStakingFees;
                 txNew.vout[burnFeesPosition].nValue = nBurnStakingFees;

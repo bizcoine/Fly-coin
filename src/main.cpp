@@ -607,7 +607,7 @@ int64_t CTransaction::GetPaidFee() const
 
 int64_t CTransaction::GetAdditionalFeeV2() const
 {
-    return (IsBeforeBlock(this->nTime, FORK_HEIGHT_6) || GetAdditionalFeeV3());
+    return (IsBeforeBlock(this->nTime, FORK_HEIGHT_9) || GetAdditionalFeeV3());
 }
 
 int64_t CTransaction::GetAdditionalFeeV3() const
@@ -664,7 +664,7 @@ bool CTransaction::IsAdditionalFeeIncludedV2() const
     int64_t nPaidFee = GetPaidFee();
     int64_t nAdditionalFee = GetAdditionalFeeV2();
 
-    return (nPaidFee >= nAdditionalFee || IsBeforeBlock(this->nTime, FORK_HEIGHT_6));
+    return (nPaidFee >= nAdditionalFee || IsBeforeBlock(this->nTime, FORK_HEIGHT_9));
 }
 
 bool CTxMemPool::accept(CTxDB& txdb, CTransaction &tx, bool fCheckInputs,
@@ -1023,15 +1023,9 @@ bool GetTransaction(const uint256 &hash, CTransaction &tx, uint256 &hashBlock)
 }
 
 
-
-
-
-
-
-
 //////////////////////////////////////////////////////////////////////////////
 //
-// CBlock and CBlockIndex
+// Fork Comparison Functions by Griffith
 //
 
 /// this function is used to determine if the time of a TX was before a fork point
@@ -1067,8 +1061,59 @@ bool IsBeforeBlock(unsigned int nTime, int nHeightOfFork)
         goto BlockFind;
     }
     /// this return determines if we our current time is less than the time of the fork
-    return (pindexFinder->nTime < nTime);
+    if(pindexFinder->nTime > nTime)
+    {
+        /// we are before the fork so return true
+        return true;
+    }
+    /// orr we arent
+    return false;
 }
+
+/// this function is used to determine if the time of a TX was after a fork point
+/// this is a partner funcion to IsBeforeBlock
+/// (if the fork point is the nHeight of the chain at a fork)
+bool IsAfterBlock(unsigned int nTime, int nHeightOfFork)
+{
+    if(nHeightOfFork > pindexBest->nHeight)
+    {
+        /// return false here because we havent hit that block yet
+        return false;
+    }
+    Recheck:
+    CBlockIndex* pindexFinder = pindexBest;
+    while(pindexFinder->nHeight > nHeightOfFork)
+    {
+        if(pindexFinder->pprev == pindexGenesisBlock && nHeightOfFork !=0)
+        {
+            /// this should NEVER happen
+            assert(false);
+        }
+        pindexFinder = pindexFinder->pprev;
+    }
+    /// once we are here pindexFiner height should be the same as the height of the fork
+    if(pindexFinder->nHeight != nHeightOfFork)
+    {
+        /// this should not happen, if it does something fucked up or your chain is corrupt
+        printf("ERROR FINDING BLOCK HEIGHT RETRYING \n");
+        goto Recheck;
+    }
+    if(pindexFinder->nTime < nTime)
+    {
+        /// our time is after the forks time
+        return true;
+    }
+    /// or we arent after the fork yet.
+    return false;
+}
+
+
+
+//////////////////////////////////////////////////////////////////////////////
+//
+// CBlock and CBlockIndex
+//
+
 
 static CBlockIndex* pblockindexFBBHLast;
 CBlockIndex* FindBlockByHeight(int nHeight)
@@ -1215,8 +1260,9 @@ int64_t GetProofOfStakeReward(int64_t nCoinAge, unsigned int nBits, unsigned int
 
 		return (nSubsidy * nBonusMultiplier) + nFees;
     }
-    else if (IsBeforeBlock(nTime, FORK_HEIGHT_8))
-	{
+    //else if (IsAfterBlock(nTime, FORK_HEIGHT_8) && IsBeforeBlock(nTime, FORK_HEIGHT_9))
+    else if(IsBeforeBlock(nTime, FORK_HEIGHT_9))
+    {
 		CBigNum bnSubsidy = CBigNum(nCoinAge) * nRewardCoinYear / 365 / COIN;
 		int64_t nSubsidy = bnSubsidy.getuint64();
 		nBonusMultiplier = 1;
@@ -1243,6 +1289,7 @@ int64_t GetProofOfStakeReward(int64_t nCoinAge, unsigned int nBits, unsigned int
 
 		return (nSubsidy * nBonusMultiplier) + nFees;
     }
+    // should be after block 61500 if this else statement is done
     else
     {
         CBigNum bnSubsidy = CBigNum(nCoinAge) * nRewardCoinYear / 365 / COIN;
@@ -1946,14 +1993,15 @@ bool CBlock::ConnectBlock(CTxDB& txdb, CBlockIndex* pindex, bool fJustCheck)
         if (nStakeReward > nCalculatedStakeReward)
             return DoS(100, error("ConnectBlock() : coinstake pays too much(actual=%"PRId64" vs calculated=%"PRId64")", nStakeReward, nCalculatedStakeReward));
 
-        if(IsBeforeBlock(this->nTime,FORK_HEIGHT_6) == false)
+        if(IsAfterBlock(this->nTime,FORK_HEIGHT_6))
         {
 
             //unsigned int feesPosition = tx.vout.size() - 1;
             unsigned int feesPosition = vtx[1].vout.size() - 1;
             int64_t nCalculatedStakingFees = nStakeReward * STAKING_FEES / COIN;
 		
-            if(STAKING_FEES_BURNING_RATE > 0) {
+            if(STAKING_FEES_BURNING_RATE > 0)
+            {
                 unsigned int burnFeesPosition = feesPosition;
                 feesPosition--;
                 if (nCalculatedStakingFees > vtx[1].vout[feesPosition].nValue)
@@ -1965,7 +2013,9 @@ bool CBlock::ConnectBlock(CTxDB& txdb, CBlockIndex* pindex, bool fJustCheck)
                     return DoS(100, error("ConnectBlock() : coinstake does not burn enough fees(actual=%"PRId64" vs calculated=%"PRId64")", vtx[1].vout[burnFeesPosition].nValue, nCalculatedBurnStakingFees));
 
                 nBurned = vtx[1].vout[burnFeesPosition].nValue;
-            } else {
+            }
+            else
+            {
                 if (nCalculatedStakingFees > vtx[1].vout[feesPosition].nValue)
                     return DoS(100, error("ConnectBlock() : coinstake does not pay enough fees(actual=%"PRId64" vs calculated=%"PRId64")", vtx[1].vout[feesPosition].nValue, nCalculatedStakingFees));
             }
@@ -3217,7 +3267,7 @@ string GetWarnings(string strFor)
 //
 int64_t GetMaxMintProofOfStake(unsigned int time)
 {
-    if(IsBeforeBlock(time, FORK_HEIGHT_8))
+    if(IsBeforeBlock(time, FORK_HEIGHT_9))
     {
         return MAX_MINT_PROOF_OF_STAKE_1;
     }
@@ -3226,7 +3276,7 @@ int64_t GetMaxMintProofOfStake(unsigned int time)
 
 string GetAdditionalFeeAddress(unsigned int time)
 {
-    if(IsBeforeBlock(time, FORK_HEIGHT_8))
+    if(IsBeforeBlock(time, FORK_HEIGHT_9))
     {
         return ADDITIONAL_FEE_ADDRESS_1;
     }
