@@ -3007,7 +3007,8 @@ bool LoadBlockIndex(bool fAllowNew)
         {
             block.nNonce   = 0;
         }
-        if (true  && (block.GetHash() != hashGenesisBlock)) {
+        if (block.GetHash() != hashGenesisBlock)
+        {
 
         // This will figure out a valid hash and Nonce if you're
         // creating a different genesis block:

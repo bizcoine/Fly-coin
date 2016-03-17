@@ -857,8 +857,6 @@ bool AppInit2()
         pwalletMain->SetDefaultExchangeKey(newDefaultExchangeKey);
         if (!pwalletMain->SetAddressBookName(pwalletMain->vchDefaultKey.GetID(), ""))
             strErrors << _("Cannot write default address") << "\n";
-        if (!pwalletMain->SetAddressBookName(pwalletMain->vchDefaultExchangeKey.GetID(), ""))
-            strErrors << _("Cannot write default Exchange address") << "\n";
     }
 
     printf("%s", strErrors.str().c_str());
