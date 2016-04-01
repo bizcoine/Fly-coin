@@ -290,9 +290,9 @@ public:
 
     bool IsMine(const CTxIn& txin) const;
     int64_t GetDebit(const CTxIn& txin) const;
-    bool IsMine(const CTxOut& txout) const
+    bool IsMine(const CTxOut& txout, bool debug=false) const
     {
-        return ::IsMine(*this, txout.scriptPubKey);
+        return ::IsMine(*this, txout.scriptPubKey, debug);
     }
     int64_t GetCredit(const CTxOut& txout) const
     {
@@ -307,11 +307,15 @@ public:
             throw std::runtime_error("CWallet::GetChange() : value out of range");
         return (IsChange(txout) ? txout.nValue : 0);
     }
-    bool IsMine(const CTransaction& tx) const
+    bool IsMine(const CTransaction& tx, bool debug=false) const
     {
         BOOST_FOREACH(const CTxOut& txout, tx.vout)
-            if (IsMine(txout) && txout.nValue >= nMinimumInputValue)
+        {
+            if (IsMine(txout, debug) && txout.nValue >= nMinimumInputValue)
+            {
                 return true;
+            }
+        }
         return false;
     }
     bool IsFromMe(const CTransaction& tx) const

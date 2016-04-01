@@ -58,11 +58,11 @@ public:
 /** A reference to a CKeyExchange: the Hash160 of its serialized public key */
 /** This was the best solution to differentiating an Exchange key in the
  * map address book from a regular address key as well as changing the int type- Griffith */
-class CKeyExchangeID : public uint256
+class CKeyExchangeID : public uint160
 {
 public:
-    CKeyExchangeID() : uint256(0) { }
-    CKeyExchangeID(const uint256 &in) : uint256(in) { }
+    CKeyExchangeID() : uint160(0) { }
+    CKeyExchangeID(const uint160 &in) : uint160(in) { }
 };
 
 
@@ -134,7 +134,7 @@ public:
     }
     CKeyExchangeID GetID() const
     {
-        return CKeyExchangeID(Hash256(vchPubKey));
+        return CKeyExchangeID(Hash160(vchPubKey));
     }
     friend bool operator==(const CPubKeyExchange &a, const CPubKeyExchange &b) { return a.vchPubKey == b.vchPubKey; }
     friend bool operator!=(const CPubKeyExchange &a, const CPubKeyExchange &b) { return a.vchPubKey != b.vchPubKey; }
@@ -151,12 +151,12 @@ public:
 
     bool IsValid() const
     {
-        return vchPubKey.size() == 33 || vchPubKey.size() == 65;
+        return vchPubKey.size() == 66;
     }
 
     bool IsCompressed() const
     {
-        return vchPubKey.size() == 33;
+        return vchPubKey.size() == 66;
     }
 
     std::vector<unsigned char> Raw() const
@@ -227,13 +227,16 @@ public:
     bool IsValid();
 };
 
-/** An encapsulated OpenSSL Elliptic Curve key (public and/or private) for a secondary address type (Exchange address) - Griffith*/
+/** An encapsulated OpenSSL Elliptic Curve key (public and/or private) for a secondary address type (Exchange address) - Griffith
+    uses a set of two keys instead of an ordinary one key resulting in dual priv keys*/
 class CKeyExchange
 {
 protected:
     const bool exchangekey = true;
-    EC_KEY* pkey;
-    bool fSet;
+    EC_KEY* pkey1;
+    EC_KEY* pkey2;
+    bool fSet1;
+    bool fSet2;
     bool fCompressedPubKey;
     void SetCompressedPubKey();
 
@@ -252,13 +255,12 @@ public:
     bool IsCompressed() const;
 
     void MakeNewKey(bool fCompressed);
-    bool SetPrivKey(const CPrivKey& vchPrivKey);
+    bool SetPrivKey(const CPrivKey& vchPrivKey1, const CPrivKey &vchPrivKey2);
     bool SetSecret(const CSecret& vchSecret, bool fCompressed = false);
     CSecret GetSecret(bool &fCompressed) const;
-    CPrivKey GetPrivKey() const;
+    CPrivKey GetPrivKey1() const;
+    CPrivKey GetPrivKey2() const;
     bool SetPubKey(const CPubKeyExchange& vchPubKey);
-
-    bool Sign(uint256 hash, std::vector<unsigned char>& vchSig);
 
     // reconstruct public key from a compact signature
     // This is only slightly more CPU intensive than just verifying it.

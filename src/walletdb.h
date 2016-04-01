@@ -93,14 +93,14 @@ public:
         return Write(std::make_pair(std::string("key"), vchPubKey.Raw()), vchPrivKey, false);
     }
 
-    bool WriteKey(const CPubKeyExchange& vchPubKey, const CPrivKey& vchPrivKey, const CKeyMetadata &keyMeta)
+    bool WriteExchangeKey(const CPubKeyExchange& vchPubKey, const CPrivKey& vchPrivKey1, const CPrivKey& vchPrivKey2, const CKeyMetadata &keyMeta)
     {
         nWalletDBUpdated++;
 
         if(!Write(std::make_pair(std::string("keymeta"), vchPubKey), keyMeta))
             return false;
 
-        return Write(std::make_pair(std::string("ekey"), vchPubKey.Raw()), vchPrivKey, false);
+        return Write(std::make_pair(std::string("ekey"), vchPubKey.Raw()), std::make_pair(vchPrivKey1, vchPrivKey2), false);
     }
 
     bool WriteCryptedKey(const CPubKey& vchPubKey, const std::vector<unsigned char>& vchCryptedSecret, const CKeyMetadata &keyMeta)

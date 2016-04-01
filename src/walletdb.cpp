@@ -291,7 +291,7 @@ ReadKeyValue(CWallet* pwallet, CDataStream& ssKey, CDataStream& ssValue,
                 key.SetPubKey(vchPubKey);
                 if (!key.SetPrivKey(pkey))
                 {
-                    strErr = "Error reading wallet database: CPrivKey corrupt";
+                    strErr = "Error reading wallet database: CPrivKey corrupt for type Key";
                     return false;
                 }
                 if (key.GetPubKey() != vchPubKey)
@@ -312,7 +312,7 @@ ReadKeyValue(CWallet* pwallet, CDataStream& ssKey, CDataStream& ssValue,
                 key.SetPubKey(vchPubKey);
                 if (!key.SetPrivKey(wkey.vchPrivKey))
                 {
-                    strErr = "Error reading wallet database: CPrivKey corrupt";
+                    strErr = "Error reading wallet database: CPrivKey corrupt for type wKey";
                     return false;
                 }
                 if (key.GetPubKey() != vchPubKey)
@@ -339,12 +339,14 @@ ReadKeyValue(CWallet* pwallet, CDataStream& ssKey, CDataStream& ssValue,
             CKeyExchange key;
 
             wss.nKeys++;
-            CPrivKey pkey;
-            ssValue >> pkey;
+            CPrivKey pkey1;
+            CPrivKey pkey2;
+            ssValue >> pkey1;
+            ssValue >> pkey2;
             key.SetPubKey(vchPubKey);
-            if (!key.SetPrivKey(pkey))
+            if (!key.SetPrivKey(pkey1, pkey2))
             {
-                strErr = "Error reading wallet database: CPrivKey corrupt";
+                strErr = "Error reading wallet database: CPrivKey corrupt for type eKey";
                 return false;
             }
             if (key.GetPubKeyExchange() != vchPubKey)

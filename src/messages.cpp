@@ -508,12 +508,16 @@ bool static ProcessMessage(CNode* pfrom, string strCommand, CDataStream& vRecv)
         bool fMissingInputs = false;
         if (tx.AcceptToMemoryPool(txdb, true, &fMissingInputs))
         {
+            printf("TX WAS ACCEPTED! \n");
             SyncWithWallets(tx, NULL, true);
+
             RelayTransaction(tx, inv.hash);
+
             mapAlreadyAskedFor.erase(inv);
             vWorkQueue.push_back(inv.hash);
             vEraseQueue.push_back(inv.hash);
 
+            printf("vWorkQueue size = %u (this is how many times the proccess orphan transactions loop will go through) \n", vWorkQueue.size());
             // Recursively process any orphan transactions that depended on this one
             for (unsigned int i = 0; i < vWorkQueue.size(); i++)
             {
@@ -549,6 +553,7 @@ bool static ProcessMessage(CNode* pfrom, string strCommand, CDataStream& vRecv)
         }
         else if (fMissingInputs)
         {
+            printf("TX MISSING INPUTS! \n");
             AddOrphanTx(tx);
 
             // DoS prevention: do not allow mapOrphanTransactions to grow unbounded
@@ -556,7 +561,14 @@ bool static ProcessMessage(CNode* pfrom, string strCommand, CDataStream& vRecv)
             if (nEvicted > 0)
                 printf("mapOrphan overflow, removed %u tx\n", nEvicted);
         }
-        if (tx.nDoS) pfrom->Misbehaving(tx.nDoS);
+        else
+        {
+            printf("TX PROCESSING FAILED! \n");
+        }
+        if (tx.nDoS)
+        {
+            pfrom->Misbehaving(tx.nDoS);
+        }
     }
 
 

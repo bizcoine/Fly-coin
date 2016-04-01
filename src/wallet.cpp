@@ -117,7 +117,7 @@ bool CWallet::AddKey(const CKeyExchange& key)
     if (!fFileBackedExchange)
         return true;
     if (!IsCrypted())
-        return CWalletDB(strWalletFile).WriteKey(pubkey, key.GetPrivKey(), mapKeyMetadata[pubkey.GetID()]);
+        return CWalletDB(strWalletFile).WriteExchangeKey(pubkey, key.GetPrivKey1(), key.GetPrivKey2(), mapKeyMetadata[pubkey.GetID()]);
     return true;
 }
 
@@ -494,6 +494,7 @@ bool CWallet::AddToWallet(const CWalletTx& wtxIn)
         bool fInsertedNew = ret.second;
         if (fInsertedNew)
         {
+            printf("AddToWallet is inserting a new tx \n");
             wtx.nTimeReceived = GetAdjustedTime();
             wtx.nOrderPos = IncOrderPosNext();
 
@@ -538,9 +539,11 @@ bool CWallet::AddToWallet(const CWalletTx& wtxIn)
                     wtx.nTimeSmart = std::max(latestEntry, std::min(blocktime, latestNow));
                 }
                 else
+                {
                     printf("AddToWallet() : found %s in block %s not in index\n",
                            wtxIn.GetHash().ToString().substr(0,10).c_str(),
                            wtxIn.hashBlock.ToString().c_str());
+                }
             }
         }
 
@@ -619,17 +622,43 @@ bool CWallet::AddToWalletIfInvolvingMe(const CTransaction& tx, const CBlock* pbl
     {
         LOCK(cs_wallet);
         bool fExisted = mapWallet.count(hash);
-        if (fExisted && !fUpdate) return false;
-        if (fExisted || IsMine(tx) || IsFromMe(tx))
+        if(fExisted == true)
         {
+            printf("fExisted is true \n");
+        }
+        else
+        {
+            printf("fExisted is false \n");
+        }
+        if (fExisted && !fUpdate)
+        {
+            printf("returning false because it exists and isnt supposed to be updated \n");
+            return false;
+        }
+        if (fExisted || IsMine(tx, true) || IsFromMe(tx))
+        {
+            printf("it either exists, is mine, or is from me so we are adding it to the wallet \n");
+            if(IsMine(tx))
+            {
+                printf("IT IS MINE \n");
+            }
+            if(IsFromMe(tx))
+            {
+                printf("IT IS FROM ME \n");
+            }
             CWalletTx wtx(this,tx);
             // Get merkle branch if transaction was found in a block
             if (pblock)
+            {
                 wtx.SetMerkleBranch(pblock);
+            }
             return AddToWallet(wtx);
         }
         else
+        {
+            printf("else, updating wallet spent \n");
             WalletUpdateSpent(tx);
+        }
     }
     return false;
 }

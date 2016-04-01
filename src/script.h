@@ -38,6 +38,7 @@ enum txnouttype
     // 'standard' transaction types:
     TX_PUBKEY,
     TX_PUBKEYHASH,
+    TX_PUBKEY_EX_HASH,
     TX_SCRIPTHASH,
     TX_MULTISIG,
 };
@@ -199,6 +200,7 @@ enum opcodetype
     OP_SMALLINTEGER = 0xfa,
     OP_PUBKEYS = 0xfb,
     OP_PUBKEYHASH = 0xfd,
+    OP_PUBKEY_EX_HASH = 0x14,
     OP_PUBKEY = 0xfe,
 
     OP_INVALIDOPCODE = 0xff,
@@ -322,7 +324,12 @@ public:
     CScript& operator<<(opcodetype opcode)
     {
         if (opcode < 0 || opcode > 0xff)
-            throw std::runtime_error("CScript::operator<<() : invalid opcode");
+        {
+            if(opcode != 0x1fa)
+            {
+                throw std::runtime_error("CScript::operator<<() : invalid opcode");
+            }
+        }
         insert(end(), (unsigned char)opcode);
         return *this;
     }
@@ -347,6 +354,12 @@ public:
         return (*this) << vchKey;
     }
 
+    CScript& operator<<(const CPubKeyExchange& key)
+    {
+        std::vector<unsigned char> vchKey = key.Raw();
+        return (*this) << vchKey;
+    }
+
     CScript& operator<<(const CBigNum& b)
     {
         *this << b.getvch();
@@ -355,7 +368,8 @@ public:
 
     CScript& operator<<(const std::vector<unsigned char>& b)
     {
-        if (b.size() < OP_PUSHDATA1)
+
+        if (b.size() < OP_PUSHDATA1) // does this for both CPubKey and CPubKeyExchange due to sizes being 33 and 66 and this checks for less than 76
         {
             insert(end(), (unsigned char)b.size());
         }
@@ -464,7 +478,6 @@ public:
                 pvchRet->assign(pc, pc + nSize);
             pc += nSize;
         }
-
         opcodeRet = (opcodetype)opcode;
         return true;
     }
@@ -592,10 +605,10 @@ public:
 
 
 bool EvalScript(std::vector<std::vector<unsigned char> >& stack, const CScript& script, const CTransaction& txTo, unsigned int nIn, int nHashType);
-bool Solver(const CScript& scriptPubKey, txnouttype& typeRet, std::vector<std::vector<unsigned char> >& vSolutionsRet);
+bool Solver(const CScript& scriptPubKey, txnouttype& typeRet, std::vector<std::vector<unsigned char> >& vSolutionsRet, bool debug=false);
 int ScriptSigArgsExpected(txnouttype t, const std::vector<std::vector<unsigned char> >& vSolutions);
 bool IsStandard(const CScript& scriptPubKey);
-bool IsMine(const CKeyStore& keystore, const CScript& scriptPubKey);
+bool IsMine(const CKeyStore& keystore, const CScript& scriptPubKey, bool debug=false);
 bool IsMine(const CKeyStore& keystore, const CTxDestination &dest);
 void ExtractAffectedKeys(const CKeyStore &keystore, const CScript& scriptPubKey, std::vector<CKeyID> &vKeys, std::vector<CKeyExchangeID> &vExchangeKeysIn);
 bool ExtractDestination(const CScript& scriptPubKey, CTxDestination& addressRet);

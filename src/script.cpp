@@ -103,6 +103,7 @@ const char* GetTxnOutputType(txnouttype t)
     case TX_NONSTANDARD: return "nonstandard";
     case TX_PUBKEY: return "pubkey";
     case TX_PUBKEYHASH: return "pubkeyhash";
+    case TX_PUBKEY_EX_HASH: return "pubkeyexhash";
     case TX_SCRIPTHASH: return "scripthash";
     case TX_MULTISIG: return "multisig";
     }
@@ -246,7 +247,7 @@ const char* GetOpName(opcodetype opcode)
     // template matching params
     case OP_PUBKEYHASH             : return "OP_PUBKEYHASH";
     case OP_PUBKEY                 : return "OP_PUBKEY";
-
+    case OP_PUBKEY_EX_HASH         : return "OP_PUBKEY_EX_HASH";
     case OP_INVALIDOPCODE          : return "OP_INVALIDOPCODE";
     default:
         return "OP_UNKNOWN";
@@ -1293,7 +1294,7 @@ bool CheckSig(vector<unsigned char> vchSig, vector<unsigned char> vchPubKey, CSc
 //
 // Return public keys or hashes from scriptPubKey, for 'standard' transaction types.
 //
-bool Solver(const CScript& scriptPubKey, txnouttype& typeRet, vector<vector<unsigned char> >& vSolutionsRet)
+bool Solver(const CScript& scriptPubKey, txnouttype& typeRet, vector<vector<unsigned char> >& vSolutionsRet, bool debug)
 {
     // Templates
     static map<txnouttype, CScript> mTemplates;
@@ -1304,6 +1305,9 @@ bool Solver(const CScript& scriptPubKey, txnouttype& typeRet, vector<vector<unsi
 
         // Bitcoin address tx, sender provides hash of pubkey, receiver provides signature and pubkey
         mTemplates.insert(make_pair(TX_PUBKEYHASH, CScript() << OP_DUP << OP_HASH160 << OP_PUBKEYHASH << OP_EQUALVERIFY << OP_CHECKSIG));
+
+        // Bitcoin address tx, sender provides hash of pubkey, receiver provides signature and pubkey
+        mTemplates.insert(make_pair(TX_PUBKEY_EX_HASH, CScript() << OP_DUP << OP_HASH160 << OP_PUBKEY_EX_HASH << OP_EQUALVERIFY << OP_CHECKSIG));
 
         // Sender provides N pubkeys, receivers provides M signatures
         mTemplates.insert(make_pair(TX_MULTISIG, CScript() << OP_SMALLINTEGER << OP_PUBKEYS << OP_SMALLINTEGER << OP_CHECKMULTISIG));
@@ -1334,7 +1338,21 @@ bool Solver(const CScript& scriptPubKey, txnouttype& typeRet, vector<vector<unsi
         CScript::const_iterator pc2 = script2.begin();
         while (true)
         {
-            if (pc1 == script1.end() && pc2 == script2.end())
+            bool end1 = false;
+            bool end2 = false;
+            if(pc1 == script1.end())
+            {
+                if(debug)
+                    printf("end1 is true \n");
+                end1 = true;
+            }
+            if(pc2 == script2.end())
+            {
+                if(debug)
+                    printf("end2 is true \n");
+                end2 = true;
+            }
+            if (end1 && end2)
             {
                 // Found a match
                 typeRet = tplate.first;
@@ -1349,56 +1367,112 @@ bool Solver(const CScript& scriptPubKey, txnouttype& typeRet, vector<vector<unsi
                 return true;
             }
             if (!script1.GetOp(pc1, opcode1, vch1))
+            {
+                if(debug)
+                    printf("Script1 failed, breaking and returning false \n");
                 break;
+            }
             if (!script2.GetOp(pc2, opcode2, vch2))
+            {
+                if(debug)
+                    printf("Script2 failed, breaking and returning false \n");
                 break;
+            }
+            if(debug)
+            {
+                printf("opcode1 = %u \n", (unsigned char)opcode1);
+                printf("opcode2 = %u \n", (unsigned char)opcode2);
+            }
 
             // Template matching opcodes:
             if (opcode2 == OP_PUBKEYS)
             {
+                if(debug)
+                    printf("it is OP_PUBKEYS \n");
                 while (vch1.size() >= 33 && vch1.size() <= 120)
                 {
                     vSolutionsRet.push_back(vch1);
                     if (!script1.GetOp(pc1, opcode1, vch1))
+                    {
+                        if(debug)
+                            printf("BREAK 1 \n");
                         break;
+                    }
                 }
                 if (!script2.GetOp(pc2, opcode2, vch2))
+                {
+                    if(debug)
+                        printf("BREAK 2 \n");
                     break;
+                }
                 // Normal situation is to fall through
                 // to other if/else statements
             }
 
             if (opcode2 == OP_PUBKEY)
             {
+                if(debug)
+                    printf("OP_PUBKEY \n");
                 if (vch1.size() < 33 || vch1.size() > 120)
+                {
+                    if(debug)
+                        printf("BREAK 3 \n");
                     break;
+                }
                 vSolutionsRet.push_back(vch1);
             }
             else if (opcode2 == OP_PUBKEYHASH)
             {
+                if(debug)
+                    printf("OP_PUBKEYHASH \n");
                 if (vch1.size() != sizeof(uint160))
+                {
+                    if(debug)
+                        printf("BREAK 4 \n");
                     break;
+                }
+                vSolutionsRet.push_back(vch1);
+            }
+            else if(opcode2 == OP_PUBKEY_EX_HASH)
+            {
+                if(debug)
+                {
+                    printf("OP_PUBKEYEXHASH \n");
+                    printf("vch1.size = %u and sizeof uint160 = %u \n", vch1.size(), sizeof(uint160));
+                }
+                if (vch1.size() != sizeof(uint160))
+                {
+                    if(debug)
+                        printf("BREAK EX4: vch1 size = %u \n",vch1.size());
+                    break;
+                }
                 vSolutionsRet.push_back(vch1);
             }
             else if (opcode2 == OP_SMALLINTEGER)
             {   // Single-byte small integer pushed onto vSolutions
-                if (opcode1 == OP_0 ||
-                    (opcode1 >= OP_1 && opcode1 <= OP_16))
+                if(debug)
+                    printf("OP_SMALLINTERGER \n");
+                if (opcode1 == OP_0 || (opcode1 >= OP_1 && opcode1 <= OP_16))
                 {
                     char n = (char)CScript::DecodeOP_N(opcode1);
                     vSolutionsRet.push_back(valtype(1, n));
                 }
                 else
+                {
+                    if(debug)
+                        printf("BREAK 5 \n");
                     break;
+                }
             }
             else if (opcode1 != opcode2 || vch1 != vch2)
             {
+                if(debug)
+                    printf("BREAK 6 \n");
                 // Others must match exactly
                 break;
             }
         }
     }
-
     vSolutionsRet.clear();
     typeRet = TX_NONSTANDARD;
     return false;
@@ -1449,15 +1523,23 @@ bool Solver(const CKeyStore& keystore, const CScript& scriptPubKey, uint256 hash
     if (!Solver(scriptPubKey, whichTypeRet, vSolutions))
         return false;
 
+    bool debug = true;
+
     CKeyID keyID;
     switch (whichTypeRet)
     {
     case TX_NONSTANDARD:
+        if(debug)
+            printf("TX_NONSTANDARD \n");
         return false;
     case TX_PUBKEY:
+        if(debug)
+            printf("TX_PUBKEY \n");
         keyID = CPubKey(vSolutions[0]).GetID();
         return Sign1(keyID, keystore, hash, nHashType, scriptSigRet);
     case TX_PUBKEYHASH:
+        if(debug)
+            printf("TX_PUBKEYHASH \n");
         keyID = CKeyID(uint160(vSolutions[0]));
         if (!Sign1(keyID, keystore, hash, nHashType, scriptSigRet))
             return false;
@@ -1468,10 +1550,27 @@ bool Solver(const CKeyStore& keystore, const CScript& scriptPubKey, uint256 hash
             scriptSigRet << vch;
         }
         return true;
+    case TX_PUBKEY_EX_HASH:
+        if(debug)
+            printf("TX_PUBKEY_EX_HASH \n");
+        keyID = CKeyExchangeID(uint160(vSolutions[0]));
+        if (!Sign1(keyID, keystore, hash, nHashType, scriptSigRet))
+            return false;
+        else
+        {
+            CPubKey vch;
+            keystore.GetPubKey(keyID, vch);
+            scriptSigRet << vch;
+        }
+        return true;
     case TX_SCRIPTHASH:
+        if(debug)
+            printf("TX_ScriptHash \n");
         return keystore.GetCScript(uint160(vSolutions[0]), scriptSigRet);
 
     case TX_MULTISIG:
+        if(debug)
+            printf("TX_MultiSig \n");
         scriptSigRet << OP_0; // workaround CHECKMULTISIG bug
         return (SignN(vSolutions, keystore, hash, nHashType, scriptSigRet));
     }
@@ -1487,6 +1586,8 @@ int ScriptSigArgsExpected(txnouttype t, const std::vector<std::vector<unsigned c
     case TX_PUBKEY:
         return 1;
     case TX_PUBKEYHASH:
+        return 2;
+    case TX_PUBKEY_EX_HASH:
         return 2;
     case TX_MULTISIG:
         if (vSolutions.size() < 1 || vSolutions[0].size() < 1)
@@ -1550,26 +1651,78 @@ bool IsMine(const CKeyStore &keystore, const CTxDestination &dest)
     return boost::apply_visitor(CKeyStoreIsMineVisitor(&keystore), dest);
 }
 
-bool IsMine(const CKeyStore &keystore, const CScript& scriptPubKey)
+bool IsMine(const CKeyStore &keystore, const CScript& scriptPubKey, bool debug)
 {
     vector<valtype> vSolutions;
     txnouttype whichType;
-    if (!Solver(scriptPubKey, whichType, vSolutions))
+    if (!Solver(scriptPubKey, whichType, vSolutions, debug))
+    {
+        if(debug)
+            printf("could not resolve solver, unable to determine type, IS MINE RETUNRING FALSE \n");
         return false;
-
+    }
     CKeyID keyID;
+    CKeyExchangeID keyExID;
     switch (whichType)
     {
     case TX_NONSTANDARD:
+    {
+        if(debug)
+            printf("TX_NONSTANDARD \n");
         return false;
+    }
     case TX_PUBKEY:
+    {
+        if(debug)
+            printf("TX_PUBKEY \n");
         keyID = CPubKey(vSolutions[0]).GetID();
-        return keystore.HaveKey(keyID);
+        keyExID = CPubKeyExchange(vSolutions[0]).GetID();
+        return (keystore.HaveKey(keyID) || keystore.HaveKey(keyExID));
+    }
     case TX_PUBKEYHASH:
+    {
+        if(debug)
+            printf("TX_PUBKEYHASH \n");
         keyID = CKeyID(uint160(vSolutions[0]));
-        return keystore.HaveKey(keyID);
+        bool haveKey = keystore.HaveKey(keyID);
+        if(haveKey)
+        {
+            if(debug)
+                printf("have reg key is true \n");
+        }
+        else
+        {
+            if(debug)
+                printf("have reg key is false \n");
+        }
+        if(debug)
+            printf("reg keyhash is %s \n", keyID.ToString().c_str());
+        return haveKey;
+    }
+    case TX_PUBKEY_EX_HASH:
+    {
+        if(debug)
+            printf("TX_PUBKEY_EX_HASH \n");
+        keyExID = CKeyExchangeID(uint160(vSolutions[0]));
+        bool haveExKey = keystore.HaveKey(keyExID);
+        if(haveExKey)
+        {
+            if(debug)
+                printf("have exchange key is true \n");
+        }
+        else
+        {
+            if(debug)
+                printf("have exchange key is false \n");
+        }
+        if(debug)
+            printf("exchange keyhash is %s \n", keyExID.ToString().c_str());
+        return haveExKey;
+    }
     case TX_SCRIPTHASH:
     {
+        if(debug)
+            printf("TX_SCRIPTHASH \n");
         CScript subscript;
         if (!keystore.GetCScript(CScriptID(uint160(vSolutions[0])), subscript))
             return false;
@@ -1577,6 +1730,8 @@ bool IsMine(const CKeyStore &keystore, const CScript& scriptPubKey)
     }
     case TX_MULTISIG:
     {
+        if(debug)
+            printf("TX_MULTISIG \n");
         // Only consider transactions "mine" if we own ALL the
         // keys involved. multi-signature transactions that are
         // partially owned (somebody else has a key that can spend
@@ -1604,6 +1759,11 @@ bool ExtractDestination(const CScript& scriptPubKey, CTxDestination& addressRet)
     else if (whichType == TX_PUBKEYHASH)
     {
         addressRet = CKeyID(uint160(vSolutions[0]));
+        return true;
+    }
+    else if (whichType == TX_PUBKEY_EX_HASH)
+    {
+        addressRet = CKeyExchangeID(uint160(vSolutions[0]));
         return true;
     }
     else if (whichType == TX_SCRIPTHASH)
@@ -1863,6 +2023,11 @@ static CScript CombineSignatures(CScript scriptPubKey, const CTransaction& txTo,
         if (sigs1.empty() || sigs1[0].empty())
             return PushAll(sigs2);
         return PushAll(sigs1);
+    case TX_PUBKEY_EX_HASH:
+        // Signatures are bigger than placeholders or empty scripts:
+        if (sigs1.empty() || sigs1[0].empty())
+            return PushAll(sigs2);
+        return PushAll(sigs1);
     case TX_SCRIPTHASH:
         if (sigs1.empty() || sigs1.back().empty())
             return PushAll(sigs2);
@@ -2007,7 +2172,8 @@ public:
         return true;
     }
 
-    bool operator()(const CKeyExchangeID &keyExchangeID) const {
+    bool operator()(const CKeyExchangeID &keyExchangeID) const
+    {
         script->clear();
         *script << OP_DUP << OP_HASH160 << keyExchangeID << OP_EQUALVERIFY << OP_CHECKSIG;
         return true;

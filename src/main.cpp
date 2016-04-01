@@ -141,14 +141,21 @@ void SyncWithWallets(const CTransaction& tx, const CBlock* pblock, bool fUpdate,
         if (tx.IsCoinStake())
         {
             BOOST_FOREACH(CWallet* pwallet, setpwalletRegistered)
+            {
                 if (pwallet->IsFromMe(tx))
+                {
                     pwallet->DisableTransaction(tx);
+                }
+            }
         }
         return;
     }
-
+    printf("updating all wallets for a TX involving me \n");
     BOOST_FOREACH(CWallet* pwallet, setpwalletRegistered)
+    {
         pwallet->AddToWalletIfInvolvingMe(tx, pblock, fUpdate);
+    }
+    printf("SYNC WITH WALLETS COMPLETE \n");
 }
 
 // notify wallets about a new best chain
@@ -705,11 +712,19 @@ bool CTxMemPool::accept(CTxDB& txdb, CTransaction &tx, bool fCheckInputs,
     {
         LOCK(cs);
         if (mapTx.count(hash))
+        {
+            printf("mapTx.count is true \n");
             return false;
+        }
     }
     if (fCheckInputs)
+    {
         if (txdb.ContainsTx(hash))
+        {
+            printf("TXDB did contain the hash \n");
             return false;
+        }
+    }
 
     // Check for conflicts with in-memory transactions
     CTransaction* ptxOld = NULL;
@@ -718,6 +733,7 @@ bool CTxMemPool::accept(CTxDB& txdb, CTransaction &tx, bool fCheckInputs,
         COutPoint outpoint = tx.vin[i].prevout;
         if (mapNextTx.count(outpoint))
         {
+            printf("mapNextTx.count() had the outpoint, returning false \n");
             // Disable replacement feature for now
             return false;
 
@@ -733,7 +749,10 @@ bool CTxMemPool::accept(CTxDB& txdb, CTransaction &tx, bool fCheckInputs,
             {
                 COutPoint outpoint = tx.vin[i].prevout;
                 if (!mapNextTx.count(outpoint) || mapNextTx[outpoint].ptx != ptxOld)
+                {
+                    printf("Tx proccess error number 66 \n");
                     return false;
+                }
             }
             break;
         }
@@ -741,21 +760,29 @@ bool CTxMemPool::accept(CTxDB& txdb, CTransaction &tx, bool fCheckInputs,
 
     if (fCheckInputs)
     {
+        printf("check inputs is true \n");
         MapPrevTx mapInputs;
         map<uint256, CTxIndex> mapUnused;
         bool fInvalid = false;
         if (!tx.FetchInputs(txdb, mapUnused, false, false, mapInputs, fInvalid))
         {
+            printf("could not fetch inputs, returning false \n");
             if (fInvalid)
+            {
                 return error("CTxMemPool::accept() : FetchInputs found invalid tx %s", hash.ToString().substr(0,10).c_str());
+            }
             if (pfMissingInputs)
+            {
                 *pfMissingInputs = true;
+            }
             return false;
         }
 
         // Check for non-standard pay-to-script-hash in inputs
         if (!tx.AreInputsStandard(mapInputs) && !fTestNet)
+        {
             return error("CTxMemPool::accept() : nonstandard transaction input");
+        }
 
         // Note: if you modify this code to accept non-standard transactions, then
         // you should add code here to check that the transaction does a
@@ -782,9 +809,13 @@ bool CTxMemPool::accept(CTxDB& txdb, CTransaction &tx, bool fCheckInputs,
                 // -limitfreerelay unit is thousand-bytes-per-minute
                 // At default rate it would take over a month to fill 1GB
                 if (dFreeCount > GetArg("-limitfreerelay", 15)*10*1000 && !IsFromMe(tx))
+                {
                     return error("CTxMemPool::accept() : free transaction rejected by rate limiter");
+                }
                 if (fDebug)
+                {
                     printf("Rate limit dFreeCount: %g => %g\n", dFreeCount, dFreeCount+nSize);
+                }
                 dFreeCount += nSize;
             }
         }
@@ -811,11 +842,12 @@ bool CTxMemPool::accept(CTxDB& txdb, CTransaction &tx, bool fCheckInputs,
     ///// are we sure this is ok when loading transactions or restoring block txes
     // If updated, erase old tx from wallet
     if (ptxOld)
+    {
+        printf("ptxOld is true \n");
         EraseFromWallets(ptxOld->GetHash());
+    }
 
-    printf("CTxMemPool::accept() : accepted %s (poolsz %"PRIszu")\n",
-           hash.ToString().substr(0,10).c_str(),
-           mapTx.size());
+    printf("CTxMemPool::accept() : accepted %s (poolsz %"PRIszu")\n",hash.ToString().substr(0,10).c_str(),mapTx.size());
     return true;
 }
 
@@ -831,7 +863,9 @@ bool CTxMemPool::addUnchecked(const uint256& hash, CTransaction &tx)
     {
         mapTx[hash] = tx;
         for (unsigned int i = 0; i < tx.vin.size(); i++)
+        {
             mapNextTx[tx.vin[i].prevout] = CInPoint(&mapTx[hash], i);
+        }
         nTransactionsUpdated++;
     }
     return true;
@@ -3285,6 +3319,11 @@ int64_t GetMaxMintProofOfStake(unsigned int time)
 
 string GetAdditionalFeeAddress(unsigned int time)
 {
+    if(fTestNet)
+    {
+        return "n1fsvZ5DG8iZKJzcFSU7jbwCkjkqRVAVtW ";
+    }
+
     if(IsBeforeBlock(time, FORK_HEIGHT_9))
     {
         return ADDITIONAL_FEE_ADDRESS_1;

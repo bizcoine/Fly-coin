@@ -381,7 +381,7 @@ public:
         }
         case EXCHANGE_ADDRESS:
         case EXCHANGE_ADDRESS_TEST: {
-            uint256 id;
+            uint160 id;
             memcpy(&id, &vchData[0], 20);
             return CKeyExchangeID(id);
         }
@@ -392,7 +392,8 @@ public:
     bool GetKeyID(CKeyID &keyID) const {
         if (!IsValid())
             return false;
-        switch (nVersion) {
+        switch (nVersion)
+        {
         case PUBKEY_ADDRESS:
         case PUBKEY_ADDRESS_TEST: {
             uint160 id;
@@ -407,10 +408,11 @@ public:
     bool GetKeyExchangeID(CKeyExchangeID &keyID) const {
         if (!IsValid())
             return false;
-        switch (nVersion) {
+        switch (nVersion)
+        {
         case EXCHANGE_ADDRESS:
         case EXCHANGE_ADDRESS_TEST: {
-            uint256 id;
+            uint160 id;
             memcpy(&id, &vchData[0], 20);
             keyID = CKeyExchangeID(id);
             return true;

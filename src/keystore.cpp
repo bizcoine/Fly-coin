@@ -251,8 +251,11 @@ bool CCryptoKeyStore::GetKey(const CKeyExchangeID &address, CKeyExchange& keyOut
             CSecret vchSecret;
             if (!DecryptSecret(vMasterKey, vchCryptedSecret, vchPubKey.GetHash(), vchSecret))
                 return false;
-            if (vchSecret.size() != 32)
+            if (vchSecret.size() != 64) // must be 64 bytes for Exchange key
+            {
+                printf("Exchange Key secret is supposed to be 64 bytes, something went wrong \n");
                 return false;
+            }
             keyOut.SetPubKey(vchPubKey);
             keyOut.SetSecret(vchSecret);
             return true;
