@@ -622,29 +622,17 @@ bool CWallet::AddToWalletIfInvolvingMe(const CTransaction& tx, const CBlock* pbl
     {
         LOCK(cs_wallet);
         bool fExisted = mapWallet.count(hash);
-        if(fExisted == true)
-        {
-            printf("fExisted is true \n");
-        }
-        else
-        {
-            printf("fExisted is false \n");
-        }
         if (fExisted && !fUpdate)
         {
-            printf("returning false because it exists and isnt supposed to be updated \n");
             return false;
         }
-        if (fExisted || IsMine(tx, true) || IsFromMe(tx))
+        if (fExisted || IsMine(tx) || IsFromMe(tx))
         {
-            printf("it either exists, is mine, or is from me so we are adding it to the wallet \n");
             if(IsMine(tx))
             {
-                printf("IT IS MINE \n");
             }
             if(IsFromMe(tx))
             {
-                printf("IT IS FROM ME \n");
             }
             CWalletTx wtx(this,tx);
             // Get merkle branch if transaction was found in a block
@@ -656,7 +644,6 @@ bool CWallet::AddToWalletIfInvolvingMe(const CTransaction& tx, const CBlock* pbl
         }
         else
         {
-            printf("else, updating wallet spent \n");
             WalletUpdateSpent(tx);
         }
     }

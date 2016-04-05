@@ -134,7 +134,6 @@ public:
     }
     CKeyExchangeID GetID() const
     {
-        printf("getting the CKeyExchangeID of a CPubKeyExhange will has a vector of size %u \n");
         return CKeyExchangeID(Hash512(vchPubKey));
     }
     friend bool operator==(const CPubKeyExchange &a, const CPubKeyExchange &b) { return a.vchPubKey == b.vchPubKey; }

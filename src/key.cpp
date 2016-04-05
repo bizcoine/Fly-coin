@@ -427,9 +427,6 @@ CPubKey CKey::GetPubKey() const
     if (i2o_ECPublicKey(pkey, &pbegin) != nSize)
         throw key_error("CKey::GetPubKey() : i2o_ECPublicKey returned unexpected size");
 
-    printf("the public key for an normal key is of size %u \n", vchPubKey.size());
-
-
     return CPubKey(vchPubKey);
 }
 
@@ -548,9 +545,6 @@ CPubKeyExchange CKeyExchange::GetPubKeyExchange() const
 
     if(vchPubKey.size() != nSize3)
         throw key_error("Resulting vchPubKey is the wrong size...");
-
-    printf("the public key for an exchange key is of size %u \n", vchPubKey.size());
-
     return CPubKeyExchange(vchPubKey);
 }
 

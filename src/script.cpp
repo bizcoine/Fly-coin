@@ -2193,8 +2193,7 @@ public:
     bool operator()(const CKeyExchangeID &keyExchangeID) const
     {
         script->clear();
-        /// cant actually do this. just temporary to test
-        *script << OP_DUP << OP_HASH512 << keyExchangeID;// << OP_EQUALVERIFY << OP_CHECKSIG;
+        *script << OP_DUP << OP_HASH512 << keyExchangeID;
         return true;
     }
 

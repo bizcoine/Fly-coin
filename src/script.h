@@ -446,14 +446,12 @@ public:
             pvchRet->clear();
         if (pc >= end())
         {
-            printf("GetOp2 returning false for end \n");
             return false;
         }
 
         // Read instruction
         if (end() - pc < 1)
         {
-            printf("GetOp2 returning false for read instruction \n");
             return false;
         }
         unsigned int opcode = *pc++;
@@ -464,26 +462,20 @@ public:
             unsigned int nSize;
             if (opcode < OP_PUSHDATA1)
             {
-                printf(" < OP_PUSHDATA1 \n");
                 nSize = opcode;
-                printf("PUSHDATA1 nSzie = %u \n",nSize);
             }
             else if (opcode == OP_PUSHDATA1)
             {
-                printf(" == OP_PUSHDATA1 \n");
                 if (end() - pc < 1)
                 {
-                    printf("OP_PUSHDATA1 FALSE CONDITIONAL \n");
                     return false;
                 }
                 nSize = *pc++;
             }
             else if (opcode == OP_PUSHDATA2)
             {
-                printf("OP_PUSHDATA2 \n");
                 if (end() - pc < 2)
                 {
-                    printf("OP_PUSHDATA2 FALSE CONDITIONAL \n");
                     return false;
                 }
                 nSize = 0;
@@ -492,10 +484,8 @@ public:
             }
             else if (opcode == OP_PUSHDATA4)
             {
-                printf("OP_PUSHDATA4 \n");
                 if (end() - pc < 4)
                 {
-                    printf("OP_PUSHDATA4 FALSE CONDITIONAL\n");
                     return false;
                 }
                 memcpy(&nSize, &pc[0], 4);
@@ -503,13 +493,11 @@ public:
             }
             if (end() - pc < 0)
             {
-                printf("GetOp2 returning false, end conditional FIRST \n");
                 return false;
             }
             if( (unsigned int)(end() - pc) < nSize )
             {
                 unsigned int ending = (unsigned int)(end() - pc);
-                printf("GetOp2 returning false, end conditional SECOND where ending = %u and nSize = %u \n",ending, nSize);
                 return false;
             }
             if (pvchRet)
@@ -519,7 +507,6 @@ public:
             pc += nSize;
         }
         opcodeRet = (opcodetype)opcode;
-        printf("returning opCode \n\n");
         return true;
     }
 

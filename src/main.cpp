@@ -150,12 +150,10 @@ void SyncWithWallets(const CTransaction& tx, const CBlock* pblock, bool fUpdate,
         }
         return;
     }
-    printf("updating all wallets for a TX involving me \n");
     BOOST_FOREACH(CWallet* pwallet, setpwalletRegistered)
     {
         pwallet->AddToWalletIfInvolvingMe(tx, pblock, fUpdate);
     }
-    printf("SYNC WITH WALLETS COMPLETE \n");
 }
 
 // notify wallets about a new best chain
