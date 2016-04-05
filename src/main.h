@@ -55,7 +55,7 @@ static const unsigned int FORK_TIME_5 = 1450046160; // Sunday, 13 Dec 2015 22:36
 static const int FORK_HEIGHT_6 = 40180;
 static const int FORK_HEIGHT_7 = 43000;
 static const int FORK_HEIGHT_8 = 58000;
-static const int FORK_HEIGHT_9 = 70000; // this should be changed when we know of an actual release date but for now. 70k is a nice round number
+static const int FORK_HEIGHT_9 = 67000;
 
 /// using these values instead of comparing to pindexBest because if there is a rollback for some unknown reason the new blocks wont be subject
 /// to exemption because they wont be in the time frame, although the scenario just described should never happen

@@ -46,6 +46,7 @@ static CBigNum bnProofOfStakeLimitTestNet(~uint256(0) >> 30);
 
 unsigned int nTargetSpacing = 2 * 60; // 2 minute
 unsigned int nTargetSpacing2 = 5 * 60; // 5 minute
+unsigned int nTargetSpacing3 = 10 * 60; // 10 minute spacing
 unsigned int nStakeMinAge = 7 * 24 * 60 * 60; // 7 days
 unsigned int nStakeMaxAge = 28 * 24 * 60 * 60; // 28 days
 unsigned int nModifierInterval = 17150; // time to elapse before new modifier is computed
@@ -968,7 +969,11 @@ int CMerkleTx::GetBlocksToMaturity() const
 {
     if (!(IsCoinBase() || IsCoinStake()))
         return 0;
-    return max(0, (nCoinbaseMaturity+20) - GetDepthInMainChain());
+    if(IsBeforeBlock(this->nTime,FORK_HEIGHT_9))
+    {
+        return max(0, (nCoinbaseMaturity+20) - GetDepthInMainChain());
+    }
+        return max(0, (nCoinbaseMaturity+90) - GetDepthInMainChain()); // after block 70k, you need 140 confirms instead of 70 for coins to mature
 }
 
 
@@ -1445,7 +1450,13 @@ unsigned int GetNextTargetRequired(const CBlockIndex* pindexLast, bool fProofOfS
 
     int nTargetTemp = nStakeTargetSpacing;
 	if(pindexLast->nTime > FORK_TIME)
+    {
 		nTargetTemp = nTargetSpacing2; //fork target to 5 minute blocks
+    }
+    if(IsAfterBlock(pindexLast->nTime,FORK_HEIGHT_9))
+    {
+        nTargetTemp = nTargetSpacing3; // fork target to 10 minute blocks
+    }
 	
     int nInterval = nTargetTimespan / nTargetTemp;
     bnNew *= ((nInterval - 1) * nTargetTemp + nActualSpacing + nActualSpacing);

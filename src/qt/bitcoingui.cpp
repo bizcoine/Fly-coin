@@ -73,6 +73,7 @@ extern CWallet* pwalletMain;
 extern int64_t nLastCoinStakeSearchInterval;
 extern unsigned int nTargetSpacing;
 extern unsigned int nTargetSpacing2;
+extern unsigned int nTargetSpacing3;
 double GetPoSKernelPS();
 
 BitcoinGUI::BitcoinGUI(QWidget *parent):
@@ -1225,10 +1226,18 @@ void BitcoinGUI::updateMintingIcon()
     else if (nLastCoinStakeSearchInterval)
     {	
         uint64_t nEstimateTime = 0;
-		if(GetAdjustedTime() > FORK_TIME)
+        if(IsAfterBlock(GetAdjustedTime(), FORK_HEIGHT_9))
+        {
+            nEstimateTime = nTargetSpacing3 * nNetworkWeight / nWeight;
+        }
+        else if(GetAdjustedTime() > FORK_TIME)
+        {
 			nEstimateTime = nTargetSpacing2 * nNetworkWeight / nWeight;
+        }
 		else
+        {
 			nEstimateTime = nTargetSpacing * nNetworkWeight / nWeight;
+        }
 	
 		uint64_t nRangeLow = nEstimateTime;
 		uint64_t nRangeHigh = nEstimateTime * 1.5;

@@ -16,6 +16,7 @@ using namespace std;
 
 extern unsigned int nTargetSpacing;
 extern unsigned int nTargetSpacing2;
+extern unsigned int nTargetSpacing3;
 
 Value getsubsidy(const Array& params, bool fHelp)
 {
@@ -77,7 +78,13 @@ Value getstakinginfo(const Array& params, bool fHelp)
     bool staking = nLastCoinStakeSearchInterval && nWeight;
     unsigned int nTempSpacing = nTargetSpacing;
 	if(GetAdjustedTime() > FORK_TIME)
+    {
 		nTempSpacing = nTargetSpacing2;
+    }
+    if(IsAfterBlock(GetAdjustedTime(), FORK_HEIGHT_9))
+    {
+        nTempSpacing = nTargetSpacing3;
+    }
     int nExpectedTime = staking ? (nTempSpacing * nNetworkWeight / nWeight) : -1;
 
     Object obj;
