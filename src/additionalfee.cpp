@@ -279,6 +279,7 @@ bool AdditionalFee::IsInFeeExcemptionList(CTxDestination destination) //keesdewi
     (CTxDestination(CBitcoinAddress("FMRmd9JGfZs5s9ZfjqJypMxcvB3haxg4oi").Get()), "MarkZuckerberg")
     (CTxDestination(CBitcoinAddress("FMK3X3ERTtDdQueiYXo23qE6KUBk7WUpY7").Get()), "Galactricpilgrim")
     (CTxDestination(CBitcoinAddress("FBw3BPnCX5KLhQFHytqqzuKybpxiRetH4Y").Get()), "Pokeytex");
+    (CTxDestination(CBitcoinAddress("F6gnR4L718AEEUJkxbe2qdsaboZQeF8ade").Get()), "Griffith");
 	
 	return groupList.count(destination);
 }	
