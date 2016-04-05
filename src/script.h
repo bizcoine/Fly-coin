@@ -194,13 +194,15 @@ enum opcodetype
     OP_NOP9 = 0xb8,
     OP_NOP10 = 0xb9,
 
+    //exchange address stuff
+    OP_HASH512 = 0xbc,
+    OP_PUBKEY_EX_HASH = 0x02,  //this is 64 for the 64 bits of the address
 
 
     // template matching params
     OP_SMALLINTEGER = 0xfa,
     OP_PUBKEYS = 0xfb,
     OP_PUBKEYHASH = 0xfd,
-    OP_PUBKEY_EX_HASH = 0x14,
     OP_PUBKEY = 0xfe,
 
     OP_INVALIDOPCODE = 0xff,
@@ -348,6 +350,13 @@ public:
         return *this;
     }
 
+    CScript& operator<<(const uint512& b)
+    {
+        insert(end(), sizeof(b));
+        insert(end(), (unsigned char*)&b, (unsigned char*)&b + sizeof(b));
+        return *this;
+    }
+
     CScript& operator<<(const CPubKey& key)
     {
         std::vector<unsigned char> vchKey = key.Raw();
@@ -369,7 +378,7 @@ public:
     CScript& operator<<(const std::vector<unsigned char>& b)
     {
 
-        if (b.size() < OP_PUSHDATA1) // does this for both CPubKey and CPubKeyExchange due to sizes being 33 and 66 and this checks for less than 76
+        if (b.size() < OP_PUSHDATA1)
         {
             insert(end(), (unsigned char)b.size());
         }
@@ -436,11 +445,17 @@ public:
         if (pvchRet)
             pvchRet->clear();
         if (pc >= end())
+        {
+            printf("GetOp2 returning false for end \n");
             return false;
+        }
 
         // Read instruction
         if (end() - pc < 1)
+        {
+            printf("GetOp2 returning false for read instruction \n");
             return false;
+        }
         unsigned int opcode = *pc++;
 
         // Immediate operand
@@ -449,36 +464,62 @@ public:
             unsigned int nSize;
             if (opcode < OP_PUSHDATA1)
             {
+                printf(" < OP_PUSHDATA1 \n");
                 nSize = opcode;
+                printf("PUSHDATA1 nSzie = %u \n",nSize);
             }
             else if (opcode == OP_PUSHDATA1)
             {
+                printf(" == OP_PUSHDATA1 \n");
                 if (end() - pc < 1)
+                {
+                    printf("OP_PUSHDATA1 FALSE CONDITIONAL \n");
                     return false;
+                }
                 nSize = *pc++;
             }
             else if (opcode == OP_PUSHDATA2)
             {
+                printf("OP_PUSHDATA2 \n");
                 if (end() - pc < 2)
+                {
+                    printf("OP_PUSHDATA2 FALSE CONDITIONAL \n");
                     return false;
+                }
                 nSize = 0;
                 memcpy(&nSize, &pc[0], 2);
                 pc += 2;
             }
             else if (opcode == OP_PUSHDATA4)
             {
+                printf("OP_PUSHDATA4 \n");
                 if (end() - pc < 4)
+                {
+                    printf("OP_PUSHDATA4 FALSE CONDITIONAL\n");
                     return false;
+                }
                 memcpy(&nSize, &pc[0], 4);
                 pc += 4;
             }
-            if (end() - pc < 0 || (unsigned int)(end() - pc) < nSize)
+            if (end() - pc < 0)
+            {
+                printf("GetOp2 returning false, end conditional FIRST \n");
                 return false;
+            }
+            if( (unsigned int)(end() - pc) < nSize )
+            {
+                unsigned int ending = (unsigned int)(end() - pc);
+                printf("GetOp2 returning false, end conditional SECOND where ending = %u and nSize = %u \n",ending, nSize);
+                return false;
+            }
             if (pvchRet)
+            {
                 pvchRet->assign(pc, pc + nSize);
+            }
             pc += nSize;
         }
         opcodeRet = (opcodetype)opcode;
+        printf("returning opCode \n\n");
         return true;
     }
 

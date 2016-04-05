@@ -426,6 +426,10 @@ CPubKey CKey::GetPubKey() const
     unsigned char* pbegin = &vchPubKey[0];
     if (i2o_ECPublicKey(pkey, &pbegin) != nSize)
         throw key_error("CKey::GetPubKey() : i2o_ECPublicKey returned unexpected size");
+
+    printf("the public key for an normal key is of size %u \n", vchPubKey.size());
+
+
     return CPubKey(vchPubKey);
 }
 
@@ -544,6 +548,8 @@ CPubKeyExchange CKeyExchange::GetPubKeyExchange() const
 
     if(vchPubKey.size() != nSize3)
         throw key_error("Resulting vchPubKey is the wrong size...");
+
+    printf("the public key for an exchange key is of size %u \n", vchPubKey.size());
 
     return CPubKeyExchange(vchPubKey);
 }
@@ -755,4 +761,68 @@ bool CKeyExchange::SetPrivKey(const CPrivKey& vchPrivKey1, const CPrivKey& vchPr
     pkey2 = NULL;
     Reset();
     return false;
+}
+
+
+bool CKeyExchange::Sign(uint512 hash, std::vector<unsigned char>& vchSig)
+{
+    vchSig.clear();
+
+    std::vector<unsigned char> vchSig1;
+    std::vector<unsigned char> vchSig2;
+
+    ECDSA_SIG *sig1 = ECDSA_do_sign((unsigned char*)&hash, sizeof(hash), pkey1);
+    if (sig1 == NULL)
+        return false;
+    BN_CTX *ctx1 = BN_CTX_new();
+    BN_CTX_start(ctx1);
+    const EC_GROUP *group1 = EC_KEY_get0_group(pkey1);
+    BIGNUM *order1 = BN_CTX_get(ctx1);
+    BIGNUM *halforder1 = BN_CTX_get(ctx1);
+    EC_GROUP_get_order(group1, order1, ctx1);
+    BN_rshift1(halforder1, order1);
+    if (BN_cmp(sig1->s, halforder1) > 0) {
+        // enforce low S values, by negating the value (modulo the order) if above order/2.
+        BN_sub(sig1->s, order1, sig1->s);
+    }
+    BN_CTX_end(ctx1);
+    BN_CTX_free(ctx1);
+    unsigned int nSize1 = ECDSA_size(pkey1);
+    vchSig1.resize(nSize1); // Make sure it is big enough
+    unsigned char *pos1 = &vchSig1[0];
+    nSize1 = i2d_ECDSA_SIG(sig1, &pos1);
+    ECDSA_SIG_free(sig1);
+
+
+
+
+
+    ECDSA_SIG *sig2 = ECDSA_do_sign((unsigned char*)&hash, sizeof(hash), pkey2);
+    if (sig2 == NULL)
+        return false;
+    BN_CTX *ctx2 = BN_CTX_new();
+    BN_CTX_start(ctx2);
+    const EC_GROUP *group2 = EC_KEY_get0_group(pkey2);
+    BIGNUM *order2 = BN_CTX_get(ctx2);
+    BIGNUM *halforder2 = BN_CTX_get(ctx2);
+    EC_GROUP_get_order(group2, order2, ctx2);
+    BN_rshift1(halforder2, order2);
+    if (BN_cmp(sig2->s, halforder2) > 0) {
+        // enforce low S values, by negating the value (modulo the order) if above order/2.
+        BN_sub(sig2->s, order2, sig2->s);
+    }
+    BN_CTX_end(ctx2);
+    BN_CTX_free(ctx2);
+    unsigned int nSize2 = ECDSA_size(pkey2);
+    vchSig1.resize(nSize2); // Make sure it is big enough
+    unsigned char *pos2 = &vchSig2[0];
+    nSize1 = i2d_ECDSA_SIG(sig2, &pos2);
+    ECDSA_SIG_free(sig2);
+
+
+    int nSize3 = nSize2 + nSize1;
+    vchSig.insert(vchSig.end(), vchSig1.begin(), vchSig1.end());
+    vchSig.insert(vchSig.end(), vchSig2.begin(), vchSig2.end());
+    vchSig.resize(nSize3); // Shrink to fit actual size
+    return true;
 }

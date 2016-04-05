@@ -959,6 +959,7 @@ bool EvalScript(vector<vector<unsigned char> >& stack, const CScript& script, co
                 case OP_SHA256:
                 case OP_HASH160:
                 case OP_HASH256:
+                case OP_HASH512:
                 {
                     // (in -- hash)
                     if (stack.size() < 1)
@@ -966,11 +967,17 @@ bool EvalScript(vector<vector<unsigned char> >& stack, const CScript& script, co
                     valtype& vch = stacktop(-1);
                     valtype vchHash((opcode == OP_RIPEMD160 || opcode == OP_SHA1 || opcode == OP_HASH160) ? 20 : 32);
                     if (opcode == OP_RIPEMD160)
+                    {
                         RIPEMD160(&vch[0], vch.size(), &vchHash[0]);
+                    }
                     else if (opcode == OP_SHA1)
+                    {
                         SHA1(&vch[0], vch.size(), &vchHash[0]);
+                    }
                     else if (opcode == OP_SHA256)
+                    {
                         SHA256(&vch[0], vch.size(), &vchHash[0]);
+                    }
                     else if (opcode == OP_HASH160)
                     {
                         uint160 hash160 = Hash160(vch);
@@ -979,6 +986,11 @@ bool EvalScript(vector<vector<unsigned char> >& stack, const CScript& script, co
                     else if (opcode == OP_HASH256)
                     {
                         uint256 hash = Hash(vch.begin(), vch.end());
+                        memcpy(&vchHash[0], &hash, sizeof(hash));
+                    }
+                    else if(opcode == OP_HASH512)
+                    {
+                        uint512 hash = Hash512(vch);
                         memcpy(&vchHash[0], &hash, sizeof(hash));
                     }
                     popstack(stack);
@@ -1307,7 +1319,7 @@ bool Solver(const CScript& scriptPubKey, txnouttype& typeRet, vector<vector<unsi
         mTemplates.insert(make_pair(TX_PUBKEYHASH, CScript() << OP_DUP << OP_HASH160 << OP_PUBKEYHASH << OP_EQUALVERIFY << OP_CHECKSIG));
 
         // Bitcoin address tx, sender provides hash of pubkey, receiver provides signature and pubkey
-        mTemplates.insert(make_pair(TX_PUBKEY_EX_HASH, CScript() << OP_DUP << OP_HASH160 << OP_PUBKEY_EX_HASH << OP_EQUALVERIFY << OP_CHECKSIG));
+        mTemplates.insert(make_pair(TX_PUBKEY_EX_HASH, CScript() << OP_DUP << OP_HASH512 << OP_PUBKEY_EX_HASH << OP_EQUALVERIFY << OP_CHECKSIG));
 
         // Sender provides N pubkeys, receivers provides M signatures
         mTemplates.insert(make_pair(TX_MULTISIG, CScript() << OP_SMALLINTEGER << OP_PUBKEYS << OP_SMALLINTEGER << OP_CHECKMULTISIG));
@@ -1372,6 +1384,10 @@ bool Solver(const CScript& scriptPubKey, txnouttype& typeRet, vector<vector<unsi
                     printf("Script1 failed, breaking and returning false \n");
                 break;
             }
+            if(debug)
+            {
+                printf("\n opcode1 = %u \n", (unsigned char)opcode1);
+            }
             if (!script2.GetOp(pc2, opcode2, vch2))
             {
                 if(debug)
@@ -1380,8 +1396,7 @@ bool Solver(const CScript& scriptPubKey, txnouttype& typeRet, vector<vector<unsi
             }
             if(debug)
             {
-                printf("opcode1 = %u \n", (unsigned char)opcode1);
-                printf("opcode2 = %u \n", (unsigned char)opcode2);
+                printf(" opcode2 = %u \n\n", (unsigned char)opcode2);
             }
 
             // Template matching opcodes:
@@ -1438,14 +1453,15 @@ bool Solver(const CScript& scriptPubKey, txnouttype& typeRet, vector<vector<unsi
                 if(debug)
                 {
                     printf("OP_PUBKEYEXHASH \n");
-                    printf("vch1.size = %u and sizeof uint160 = %u \n", vch1.size(), sizeof(uint160));
+                    printf("vch1.size = %u and sizeof uint512 = %u \n", vch1.size(), sizeof(uint512));
                 }
-                if (vch1.size() != sizeof(uint160))
+                if (vch1.size() != sizeof(uint512))
                 {
                     if(debug)
                         printf("BREAK EX4: vch1 size = %u \n",vch1.size());
                     break;
                 }
+                printf("PUSHED BACK SOLUTION FOR PUB EXCHANGE KEY \n");
                 vSolutionsRet.push_back(vch1);
             }
             else if (opcode2 == OP_SMALLINTEGER)
@@ -1494,6 +1510,20 @@ bool Sign1(const CKeyID& address, const CKeyStore& keystore, uint256 hash, int n
     return true;
 }
 
+bool Sign1(const CKeyExchangeID& address, const CKeyStore& keystore, uint512 hash, int nHashType, CScript& scriptSigRet)
+{
+    CKeyExchange key;
+    if (!keystore.GetKey(address, key))
+        return false;
+    vector<unsigned char> vchSig;
+    if (!key.Sign(hash, vchSig))
+        return false;
+    vchSig.push_back((unsigned char)nHashType);
+    scriptSigRet << vchSig;
+
+    return true;
+}
+
 bool SignN(const vector<valtype>& multisigdata, const CKeyStore& keystore, uint256 hash, int nHashType, CScript& scriptSigRet)
 {
     int nSigned = 0;
@@ -1526,6 +1556,7 @@ bool Solver(const CKeyStore& keystore, const CScript& scriptPubKey, uint256 hash
     bool debug = true;
 
     CKeyID keyID;
+    CKeyExchangeID eKeyID;
     switch (whichTypeRet)
     {
     case TX_NONSTANDARD:
@@ -1541,19 +1572,6 @@ bool Solver(const CKeyStore& keystore, const CScript& scriptPubKey, uint256 hash
         if(debug)
             printf("TX_PUBKEYHASH \n");
         keyID = CKeyID(uint160(vSolutions[0]));
-        if (!Sign1(keyID, keystore, hash, nHashType, scriptSigRet))
-            return false;
-        else
-        {
-            CPubKey vch;
-            keystore.GetPubKey(keyID, vch);
-            scriptSigRet << vch;
-        }
-        return true;
-    case TX_PUBKEY_EX_HASH:
-        if(debug)
-            printf("TX_PUBKEY_EX_HASH \n");
-        keyID = CKeyExchangeID(uint160(vSolutions[0]));
         if (!Sign1(keyID, keystore, hash, nHashType, scriptSigRet))
             return false;
         else
@@ -1703,7 +1721,7 @@ bool IsMine(const CKeyStore &keystore, const CScript& scriptPubKey, bool debug)
     {
         if(debug)
             printf("TX_PUBKEY_EX_HASH \n");
-        keyExID = CKeyExchangeID(uint160(vSolutions[0]));
+        keyExID = CKeyExchangeID(uint512(vSolutions[0]));
         bool haveExKey = keystore.HaveKey(keyExID);
         if(haveExKey)
         {
@@ -1763,7 +1781,7 @@ bool ExtractDestination(const CScript& scriptPubKey, CTxDestination& addressRet)
     }
     else if (whichType == TX_PUBKEY_EX_HASH)
     {
-        addressRet = CKeyExchangeID(uint160(vSolutions[0]));
+        addressRet = CKeyExchangeID(uint512(vSolutions[0]));
         return true;
     }
     else if (whichType == TX_SCRIPTHASH)
@@ -2175,7 +2193,8 @@ public:
     bool operator()(const CKeyExchangeID &keyExchangeID) const
     {
         script->clear();
-        *script << OP_DUP << OP_HASH160 << keyExchangeID << OP_EQUALVERIFY << OP_CHECKSIG;
+        /// cant actually do this. just temporary to test
+        *script << OP_DUP << OP_HASH512 << keyExchangeID;// << OP_EQUALVERIFY << OP_CHECKSIG;
         return true;
     }
 

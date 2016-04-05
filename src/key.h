@@ -58,11 +58,11 @@ public:
 /** A reference to a CKeyExchange: the Hash160 of its serialized public key */
 /** This was the best solution to differentiating an Exchange key in the
  * map address book from a regular address key as well as changing the int type- Griffith */
-class CKeyExchangeID : public uint160
+class CKeyExchangeID : public uint512
 {
 public:
-    CKeyExchangeID() : uint160(0) { }
-    CKeyExchangeID(const uint160 &in) : uint160(in) { }
+    CKeyExchangeID() : uint512(0) { }
+    CKeyExchangeID(const uint512 &in) : uint512(in) { }
 };
 
 
@@ -134,7 +134,8 @@ public:
     }
     CKeyExchangeID GetID() const
     {
-        return CKeyExchangeID(Hash160(vchPubKey));
+        printf("getting the CKeyExchangeID of a CPubKeyExhange will has a vector of size %u \n");
+        return CKeyExchangeID(Hash512(vchPubKey));
     }
     friend bool operator==(const CPubKeyExchange &a, const CPubKeyExchange &b) { return a.vchPubKey == b.vchPubKey; }
     friend bool operator!=(const CPubKeyExchange &a, const CPubKeyExchange &b) { return a.vchPubKey != b.vchPubKey; }
@@ -261,6 +262,8 @@ public:
     CPrivKey GetPrivKey1() const;
     CPrivKey GetPrivKey2() const;
     bool SetPubKey(const CPubKeyExchange& vchPubKey);
+
+    bool Sign(uint512 hash, std::vector<unsigned char>& vchSig);
 
     // reconstruct public key from a compact signature
     // This is only slightly more CPU intensive than just verifying it.

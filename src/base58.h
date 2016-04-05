@@ -292,7 +292,11 @@ public:
 
     bool Set(const CKeyExchangeID &id)
     {
-        SetData(fTestNet ? EXCHANGE_ADDRESS_TEST : EXCHANGE_ADDRESS, &id, 20);
+        printf("/n/n/n SOME DATA ABOUT C KEY EXCHANGE ID : \n"
+               "SIZE = %u \n"
+               "HEX = %s \n"
+               "VALUE TO STRING = %s \n\n\n\n",id.size(),id.GetHex().c_str(),id.ToString().c_str() );
+        SetData(fTestNet ? EXCHANGE_ADDRESS_TEST : EXCHANGE_ADDRESS, &id, id.size());
         return true;
     }
 
@@ -322,11 +326,11 @@ public:
                 fExpectTestNet = false;
                 break;
             case EXCHANGE_ADDRESS:
-                nExpectedSize = 20; // Hash of public address key
+                nExpectedSize = 64;
                 fExpectTestNet = false;
                 break;
             case EXCHANGE_ADDRESS_TEST:
-                nExpectedSize = 20;
+                nExpectedSize = 64;
                 fExpectTestNet = true;
                 break;
             case PUBKEY_ADDRESS_TEST:
@@ -341,7 +345,13 @@ public:
             default:
                 return false;
         }
-        return fExpectTestNet == fTestNet && vchData.size() == nExpectedSize;
+        bool valid = (fExpectTestNet == fTestNet && vchData.size() == nExpectedSize);
+        if(!valid)
+        {
+            printf("vchData.size() = %u, expectedSize = %u \n", vchData.size(), nExpectedSize);
+            return false;
+        }
+        return true;
     }
 
     CBitcoinAddress()
@@ -381,8 +391,8 @@ public:
         }
         case EXCHANGE_ADDRESS:
         case EXCHANGE_ADDRESS_TEST: {
-            uint160 id;
-            memcpy(&id, &vchData[0], 20);
+            uint512 id;
+            memcpy(&id, &vchData[0], vchData.size());
             return CKeyExchangeID(id);
         }
         }
@@ -407,13 +417,16 @@ public:
 
     bool GetKeyExchangeID(CKeyExchangeID &keyID) const {
         if (!IsValid())
+        {
+            printf("vchData.size() = %u and expected Size was 64 \n", vchData.size());
             return false;
+        }
         switch (nVersion)
         {
         case EXCHANGE_ADDRESS:
         case EXCHANGE_ADDRESS_TEST: {
-            uint160 id;
-            memcpy(&id, &vchData[0], 20);
+            uint512 id;
+            memcpy(&id, &vchData[0], vchData.size());
             keyID = CKeyExchangeID(id);
             return true;
         }
