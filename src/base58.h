@@ -292,10 +292,6 @@ public:
 
     bool Set(const CKeyExchangeID &id)
     {
-        printf("/n/n/n SOME DATA ABOUT C KEY EXCHANGE ID : \n"
-               "SIZE = %u \n"
-               "HEX = %s \n"
-               "VALUE TO STRING = %s \n\n\n\n",id.size(),id.GetHex().c_str(),id.ToString().c_str() );
         SetData(fTestNet ? EXCHANGE_ADDRESS_TEST : EXCHANGE_ADDRESS, &id, id.size());
         return true;
     }

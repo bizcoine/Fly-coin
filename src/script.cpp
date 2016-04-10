@@ -1461,7 +1461,6 @@ bool Solver(const CScript& scriptPubKey, txnouttype& typeRet, vector<vector<unsi
                         printf("BREAK EX4: vch1 size = %u \n",vch1.size());
                     break;
                 }
-                printf("PUSHED BACK SOLUTION FOR PUB EXCHANGE KEY \n");
                 vSolutionsRet.push_back(vch1);
             }
             else if (opcode2 == OP_SMALLINTEGER)
