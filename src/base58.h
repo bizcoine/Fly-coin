@@ -81,7 +81,9 @@ inline bool DecodeBase58(const char* psz, std::vector<unsigned char>& vchRet)
     CBigNum bn = 0;
     CBigNum bnChar;
     while (isspace(*psz))
+    {
         psz++;
+    }
 
     // Convert big endian string to bignum
     for (const char* p = psz; *p; p++)
@@ -90,14 +92,22 @@ inline bool DecodeBase58(const char* psz, std::vector<unsigned char>& vchRet)
         if (p1 == NULL)
         {
             while (isspace(*p))
+            {
                 p++;
+            }
             if (*p != '\0')
+            {
+                printf("not null terminated, returning false \n");
                 return false;
+            }
             break;
         }
         bnChar.setulong(p1 - pszBase58);
         if (!BN_mul(&bn, &bn, &bn58, pctx))
-            throw bignum_error("DecodeBase58 : BN_mul failed");
+        {
+            printf("DecodeBase58 : BN_mul failed \n");
+            return false;
+        }
         bn += bnChar;
     }
 
@@ -106,14 +116,16 @@ inline bool DecodeBase58(const char* psz, std::vector<unsigned char>& vchRet)
 
     // Trim off sign byte if present
     if (vchTmp.size() >= 2 && vchTmp.end()[-1] == 0 && vchTmp.end()[-2] >= 0x80)
+    {
         vchTmp.erase(vchTmp.end()-1);
-
+    }
     // Restore leading zeros
     int nLeadingZeros = 0;
     for (const char* p = psz; *p == pszBase58[0]; p++)
+    {
         nLeadingZeros++;
+    }
     vchRet.assign(nLeadingZeros + vchTmp.size(), 0);
-
     // Convert little endian data to big endian
     reverse_copy(vchTmp.begin(), vchTmp.end(), vchRet.end() - vchTmp.size());
     return true;
@@ -144,15 +156,20 @@ inline std::string EncodeBase58Check(const std::vector<unsigned char>& vchIn)
 inline bool DecodeBase58Check(const char* psz, std::vector<unsigned char>& vchRet)
 {
     if (!DecodeBase58(psz, vchRet))
+    {
+        printf("DecodeBase58 failed, returning false \n");
         return false;
+    }
     if (vchRet.size() < 4)
     {
+        printf("vchRet less than 4, returning false \n");
         vchRet.clear();
         return false;
     }
     uint256 hash = Hash(vchRet.begin(), vchRet.end()-4);
     if (memcmp(&hash, &vchRet.end()[-4], 4) != 0)
     {
+        printf("memcmp does not equal 0, returning false \n");
         vchRet.clear();
         return false;
     }
@@ -211,6 +228,7 @@ public:
         DecodeBase58Check(psz, vchTemp);
         if (vchTemp.empty())
         {
+            printf("DecodeBase58Check sent back empty temporary array, returning false \n");
             vchData.clear();
             nVersion = 0;
             return false;
@@ -483,7 +501,7 @@ public:
         return vchSecret;
     }
 
-    bool IsValid() const
+    bool IsValid() const /// returns false when importing priv keys...
     {
         bool fExpectTestNet = false;
         switch(nVersion)

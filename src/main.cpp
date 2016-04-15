@@ -2065,7 +2065,7 @@ bool CBlock::ConnectBlock(CTxDB& txdb, CBlockIndex* pindex, bool fJustCheck)
 
                 nBurned = vtx[1].vout[burnFeesPosition].nValue;
             }
-            else
+            else if(IsBeforeBlock(this->nTime, FORK_HEIGHT_9))
             {
                 if (nCalculatedStakingFees > vtx[1].vout[feesPosition].nValue)
                     return DoS(100, error("ConnectBlock() : coinstake does not pay enough fees(actual=%"PRId64" vs calculated=%"PRId64")", vtx[1].vout[feesPosition].nValue, nCalculatedStakingFees));

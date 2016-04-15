@@ -120,9 +120,14 @@ Value importprivkey(const Array& params, bool fHelp)
     CBitcoinSecret vchSecret;
     bool fGood = vchSecret.SetString(strSecret);
 
-    if (!fGood) throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Invalid private key");
+    if (!fGood)
+    {
+        throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Invalid private key");
+    }
     if (pwalletMain->fWalletUnlockMintOnly) // No importprivkey in mint-only mode
+    {
         throw JSONRPCError(RPC_WALLET_UNLOCK_NEEDED, "Wallet is unlocked for minting only.");
+    }
 
     CKey key;
     bool fCompressed;
@@ -142,7 +147,51 @@ Value importprivkey(const Array& params, bool fHelp)
         pwalletMain->ReacceptWalletTransactions();
     }
 
-    return Value::null;
+    return "Done!";
+}
+
+Value importprivkeyexchange(const Array& params, bool fHelp)
+{
+    if (fHelp || params.size() < 1 || params.size() > 2)
+        throw runtime_error(
+            "importprivkeyexchange <FlyCoinprivkey for exchange address> [label]\n"
+            "Adds a private key (as returned by dumpprivkeyexchange) to your wallet.");
+
+    string strSecret = params[0].get_str();
+    string strLabel = "";
+    if (params.size() > 1)
+        strLabel = params[1].get_str();
+    CBitcoinSecret vchSecret;
+    bool fGood = vchSecret.SetString(strSecret);
+
+    if (!fGood)
+    {
+        throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Invalid exchange private key");
+    }
+    if (pwalletMain->fWalletUnlockMintOnly) // No importprivkey in mint-only mode
+    {
+        throw JSONRPCError(RPC_WALLET_UNLOCK_NEEDED, "Wallet is unlocked for minting only.");
+    }
+
+    CKeyExchange key;
+    bool fCompressed;
+    CSecret secret = vchSecret.GetSecret(fCompressed);
+    key.SetSecret(secret, fCompressed);
+    CKeyExchangeID vchAddress = key.GetPubKeyExchange().GetID();
+    {
+        LOCK2(cs_main, pwalletMain->cs_wallet);
+
+        pwalletMain->MarkDirty();
+        pwalletMain->SetAddressBookName(vchAddress, strLabel);
+
+        if (!pwalletMain->AddKey(key))
+            throw JSONRPCError(RPC_WALLET_ERROR, "Error adding key to wallet");
+
+        pwalletMain->ScanForWalletTransactions(pindexGenesisBlock, true);
+        pwalletMain->ReacceptWalletTransactions();
+    }
+
+    return "Done!";
 }
 
 Value importwallet(const Array& params, bool fHelp)
@@ -245,16 +294,57 @@ Value dumpprivkey(const Array& params, bool fHelp)
     string strAddress = params[0].get_str();
     CBitcoinAddress address;
     if (!address.SetString(strAddress))
+    {
         throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Invalid FlyCoin address");
+    }
     if (pwalletMain->fWalletUnlockMintOnly) // No dumpprivkey in mint-only mode
+    {
         throw JSONRPCError(RPC_WALLET_UNLOCK_NEEDED, "Wallet is unlocked for minting only.");
+    }
     CKeyID keyID;
     if (!address.GetKeyID(keyID))
+    {
         throw JSONRPCError(RPC_TYPE_ERROR, "Address does not refer to a key");
+    }
     CSecret vchSecret;
     bool fCompressed;
     if (!pwalletMain->GetSecret(keyID, vchSecret, fCompressed))
+    {
         throw JSONRPCError(RPC_WALLET_ERROR, "Private key for address " + strAddress + " is not known");
+    }
+    return CBitcoinSecret(vchSecret, fCompressed).ToString();
+}
+
+Value dumpprivkeyexchange(const Array& params, bool fHelp)
+{
+    if (fHelp || params.size() != 1)
+        throw runtime_error(
+            "dumpprivkeyexchange <FlyCoinaddress>\n"
+            "Reveals the exchange private key corresponding to <FlyCoinaddress>.");
+
+    EnsureWalletIsUnlocked();
+
+    string strAddress = params[0].get_str();
+    CBitcoinAddress address;
+    if (!address.SetString(strAddress))
+    {
+        throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Invalid FlyCoin address");
+    }
+    if (pwalletMain->fWalletUnlockMintOnly) // No dumpprivkey in mint-only mode
+    {
+        throw JSONRPCError(RPC_WALLET_UNLOCK_NEEDED, "Wallet is unlocked for minting only.");
+    }
+    CKeyExchangeID keyID;
+    if (!address.GetKeyExchangeID(keyID))
+    {
+        throw JSONRPCError(RPC_TYPE_ERROR, "Address does not refer to a key");
+    }
+    CSecret vchSecret;
+    bool fCompressed;
+    if (!pwalletMain->GetSecret(keyID, vchSecret, fCompressed))
+    {
+        throw JSONRPCError(RPC_WALLET_ERROR, "Private key for address " + strAddress + " is not known");
+    }
     return CBitcoinSecret(vchSecret, fCompressed).ToString();
 }
 

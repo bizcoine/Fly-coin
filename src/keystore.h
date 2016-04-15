@@ -48,6 +48,14 @@ public:
         vchSecret = key.GetSecret(fCompressed);
         return true;
     }
+    virtual bool GetSecret(const CKeyExchangeID &address, CSecret& vchSecret, bool &fCompressed) const
+    {
+        CKeyExchange key;
+        if (!GetKey(address, key))
+            return false;
+        vchSecret = key.GetSecret(fCompressed);
+        return true;
+    }
 };
 
 typedef std::map<CKeyID, std::pair<CSecret, bool> > RegKeyMap;
