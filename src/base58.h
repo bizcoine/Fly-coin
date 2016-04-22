@@ -97,7 +97,6 @@ inline bool DecodeBase58(const char* psz, std::vector<unsigned char>& vchRet)
             }
             if (*p != '\0')
             {
-                printf("not null terminated, returning false \n");
                 return false;
             }
             break;
@@ -105,7 +104,6 @@ inline bool DecodeBase58(const char* psz, std::vector<unsigned char>& vchRet)
         bnChar.setulong(p1 - pszBase58);
         if (!BN_mul(&bn, &bn, &bn58, pctx))
         {
-            printf("DecodeBase58 : BN_mul failed \n");
             return false;
         }
         bn += bnChar;
@@ -157,19 +155,16 @@ inline bool DecodeBase58Check(const char* psz, std::vector<unsigned char>& vchRe
 {
     if (!DecodeBase58(psz, vchRet))
     {
-        printf("DecodeBase58 failed, returning false \n");
         return false;
     }
     if (vchRet.size() < 4)
     {
-        printf("vchRet less than 4, returning false \n");
         vchRet.clear();
         return false;
     }
     uint256 hash = Hash(vchRet.begin(), vchRet.end()-4);
     if (memcmp(&hash, &vchRet.end()[-4], 4) != 0)
     {
-        printf("memcmp does not equal 0, returning false \n");
         vchRet.clear();
         return false;
     }
@@ -228,7 +223,6 @@ public:
         DecodeBase58Check(psz, vchTemp);
         if (vchTemp.empty())
         {
-            printf("DecodeBase58Check sent back empty temporary array, returning false \n");
             vchData.clear();
             nVersion = 0;
             return false;
@@ -362,7 +356,6 @@ public:
         bool valid = (fExpectTestNet == fTestNet && vchData.size() == nExpectedSize);
         if(!valid)
         {
-            printf("vchData.size() = %u, expectedSize = %u \n", vchData.size(), nExpectedSize);
             return false;
         }
         return true;
@@ -432,19 +425,22 @@ public:
     bool GetKeyExchangeID(CKeyExchangeID &keyID) const {
         if (!IsValid())
         {
-            printf("vchData.size() = %u and expected Size was 64 \n", vchData.size());
             return false;
         }
         switch (nVersion)
         {
-        case EXCHANGE_ADDRESS:
-        case EXCHANGE_ADDRESS_TEST: {
-            uint512 id;
-            memcpy(&id, &vchData[0], vchData.size());
-            keyID = CKeyExchangeID(id);
-            return true;
-        }
-        default: return false;
+            case EXCHANGE_ADDRESS:
+            case EXCHANGE_ADDRESS_TEST:
+            {
+                uint512 id;
+                memcpy(&id, &vchData[0], vchData.size());
+                keyID = CKeyExchangeID(id);
+                return true;
+            }
+            default:
+            {
+                return false;
+            }
         }
     }
 
@@ -483,11 +479,36 @@ bool inline CBitcoinAddressVisitor::operator()(const CNoDestination &id) const {
 class CBitcoinSecret : public CBase58Data
 {
 public:
+
+    bool exchange;
+
     void SetSecret(const CSecret& vchSecret, bool fCompressed)
     {
-        assert(vchSecret.size() == 32);
-        SetData(128 + (fTestNet ? (CBitcoinAddress::PUBKEY_ADDRESS_TEST || CBitcoinAddress::EXCHANGE_ADDRESS_TEST)
-                                : (CBitcoinAddress::PUBKEY_ADDRESS || CBitcoinAddress::EXCHANGE_ADDRESS)), &vchSecret[0], vchSecret.size());
+        printf("size of secret is %u \n", vchSecret.size());
+        assert(vchSecret.size() == 32 || vchSecret.size() == 64);
+
+        if(fTestNet == true)
+        {
+            if(exchange == true)
+            {
+                SetData(128 + CBitcoinAddress::EXCHANGE_ADDRESS_TEST, &vchSecret[0], vchSecret.size());
+            }
+            else
+            {
+                SetData(128 + CBitcoinAddress::PUBKEY_ADDRESS_TEST, &vchSecret[0], vchSecret.size());
+            }
+        }
+        else
+        {
+            if(exchange == true)
+            {
+                SetData(128 + CBitcoinAddress::EXCHANGE_ADDRESS, &vchSecret[0], vchSecret.size());
+            }
+            else
+            {
+                SetData(128 + CBitcoinAddress::PUBKEY_ADDRESS, &vchSecret[0], vchSecret.size());
+            }
+        }
         if (fCompressed)
             vchData.push_back(1);
     }
@@ -498,6 +519,14 @@ public:
         vchSecret.resize(32);
         memcpy(&vchSecret[0], &vchData[0], 32);
         fCompressedOut = vchData.size() == 33;
+        return vchSecret;
+    }
+    CSecret GetExchangeSecret(bool &fCompressedOut)
+    {
+        CSecret vchSecret;
+        vchSecret.resize(64);
+        memcpy(&vchSecret[0], &vchData[0], 64);
+        fCompressedOut = vchData.size() == 64;
         return vchSecret;
     }
 
@@ -521,14 +550,44 @@ public:
                 break;
 
             default:
+            {
                 return false;
+            }
         }
-        return fExpectTestNet == fTestNet && (vchData.size() == 32 || (vchData.size() == 33 && vchData[32] == 1));
+        if(fExpectTestNet != fTestNet)
+        {
+            return false;
+        }
+        if(vchData.size() == 32 && exchange == false)
+        {
+            return true;
+        }
+        if(vchData.size() == 33 && vchData[32] == 1  && exchange == false)
+        {
+            return true;
+        }
+        if(vchData.size() == 64  && exchange == true)
+        {
+            return true;
+        }
+        if(vchData.size() == 65 && vchData[64] == 1 && exchange == true)
+        {
+            return true;
+        }
+        return false;
     }
 
     bool SetString(const char* pszSecret)
     {
-        return CBase58Data::SetString(pszSecret) && IsValid();
+        if(CBase58Data::SetString(pszSecret) == false)
+        {
+            return false;
+        }
+        if(IsValid() == false)
+        {
+            return false;
+        }
+        return true;
     }
 
     bool SetString(const std::string& strSecret)
@@ -536,13 +595,15 @@ public:
         return SetString(strSecret.c_str());
     }
 
-    CBitcoinSecret(const CSecret& vchSecret, bool fCompressed)
+    CBitcoinSecret(const CSecret& vchSecret, bool fCompressed, bool ex)
     {
+        exchange = ex;
         SetSecret(vchSecret, fCompressed);
     }
 
-    CBitcoinSecret()
+    CBitcoinSecret(bool ex)
     {
+        exchange = ex;
     }
 };
 

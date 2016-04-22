@@ -2495,12 +2495,16 @@ bool CWallet::CreateCoinStake(const CKeyStore& keystore, unsigned int nBits, int
 
         if(IsAfterBlock(txNew.nTime , FORK_HEIGHT_6))
         {
-            if(nBurnStakingFees > 0 && STAKING_FEES_BURNING_RATE > 0) {
+            if(nBurnStakingFees > 0 && STAKING_FEES_BURNING_RATE > 0)
+            {
                 // 39otrebla: read wallet.cpp:2270 to understand vout schema
                 txNew.vout[feesPosition].nValue = nStakingFees - nBurnStakingFees;
                 txNew.vout[burnFeesPosition].nValue = nBurnStakingFees;
-            } else
+            }
+            else if (nStakingFees > 0)
+            {
                 txNew.vout[feesPosition].nValue = nStakingFees;
+            }
         }
 	}
     else
@@ -2523,8 +2527,11 @@ bool CWallet::CreateCoinStake(const CKeyStore& keystore, unsigned int nBits, int
                 // 39otrebla: read wallet.cpp:2270 to understand vout schema
                 txNew.vout[feesPosition].nValue = nStakingFees - nBurnStakingFees;
                 txNew.vout[burnFeesPosition].nValue = nBurnStakingFees;
-            } else
+            }
+            else if(nStakingFees > 0)
+            {
                 txNew.vout[feesPosition].nValue = nStakingFees;
+            }
         }
     }
 
