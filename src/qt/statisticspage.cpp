@@ -65,7 +65,7 @@ void StatisticsPage::updateStatistics()
 	else
         subsidy = "0 FLY";
 
-    QString subsidy2 = "50% Annual w/ Super Blocks";
+    QString subsidy2 = "35% Annual w/ Super Blocks";
 
     QString hardness = QString::number(pHardness, 'f', 6);
     QString hardness2 = QString::number(pHardness2, 'f', 6);
