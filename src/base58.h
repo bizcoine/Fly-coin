@@ -526,7 +526,7 @@ public:
         CSecret vchSecret;
         vchSecret.resize(64);
         memcpy(&vchSecret[0], &vchData[0], 64);
-        fCompressedOut = vchData.size() == 64;
+        fCompressedOut = vchData.size() == 65;
         return vchSecret;
     }
 
