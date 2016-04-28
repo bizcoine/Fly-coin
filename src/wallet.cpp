@@ -2368,6 +2368,41 @@ bool CWallet::CreateCoinStake(const CKeyStore& keystore, unsigned int nBits, int
     if (nCredit == 0 || nCredit > nBalance - nReserveBalance)
         return false;
 
+    uint256 prevHash = 0;
+    if(pindexBest->pprev)
+        prevHash = pindexBest->GetBlockHash();
+
+    // Calculate coin age reward
+    int64_t nReward;
+    {
+        uint64_t nCoinAge;
+        CTxDB txdb("r");
+        if (!txNew.GetCoinAge(txdb, nCoinAge))
+            return error("CreateCoinStake : failed to calculate coin age");
+
+        int64_t nBonusMultiplier = 1;
+        nReward = GetProofOfStakeReward(nCoinAge, nBits, txNew.nTime, nFees, nCredit, prevHash, nBonusMultiplier);
+        if (nReward <= 0)
+            return false;
+
+        nCredit += nReward;
+    }
+
+    // 39otrebla: staking fees/burning staking fees is 10%
+    uint64_t nStakingFees = nReward * STAKING_FEES / COIN;
+
+    // Griffith: new fee structure after FORK_HEIGHT_9
+    if(IsAfterBlock(txNew.nTime, FORK_HEIGHT_9))
+    {
+        if(fMultiSend && fMultiSendCoinStake && vMultiSend.size() > 0) // raised to 20%
+        {
+            nStakingFees = nReward * (STAKING_FEES * 2) / COIN;
+        }
+        else //no fees if not multisendstaking aka using savings
+        {
+            nStakingFees = 0;
+        }
+    }
     /*
         39otrebla: staking fees/burning staking fees
         We do need to add 1 or 2 vout depending on whether staking fees have to be (partially) burned
@@ -2376,11 +2411,13 @@ bool CWallet::CreateCoinStake(const CKeyStore& keystore, unsigned int nBits, int
     */
     if(IsAfterBlock(txNew.nTime, FORK_HEIGHT_6))
     {
-
-        // add a vout to SuperFly address for the staking fees
-        CScript scriptSuperFly;
-        scriptSuperFly.SetDestination(CTxDestination(CBitcoinAddress(GetAdditionalFeeAddress(txNew.nTime)).Get()));
-        txNew.vout.push_back(CTxOut(0, scriptSuperFly));
+        if(nStakingFees > 0)
+        {
+            // add a vout to SuperFly address for the staking fees
+            CScript scriptSuperFly;
+            scriptSuperFly.SetDestination(CTxDestination(CBitcoinAddress(GetAdditionalFeeAddress(txNew.nTime)).Get()));
+            txNew.vout.push_back(CTxOut(0, scriptSuperFly));
+        }
 
         // add a vout to (partially) burn staking fees
         if(STAKING_FEES_BURNING_RATE > 0) {
@@ -2418,42 +2455,6 @@ bool CWallet::CreateCoinStake(const CKeyStore& keystore, unsigned int nBits, int
             txNew.vin.push_back(CTxIn(pcoin.first->GetHash(), pcoin.second));
             nCredit += pcoin.first->vout[pcoin.second].nValue;
             vwtxPrev.push_back(pcoin.first);
-        }
-    }
-
-	uint256 prevHash = 0;
-	if(pindexBest->pprev)
-		prevHash = pindexBest->GetBlockHash();
-	
-    // Calculate coin age reward
-	int64_t nReward;
-    {
-        uint64_t nCoinAge;
-        CTxDB txdb("r");
-        if (!txNew.GetCoinAge(txdb, nCoinAge))
-            return error("CreateCoinStake : failed to calculate coin age");
-		
-		int64_t nBonusMultiplier = 1;
-		nReward = GetProofOfStakeReward(nCoinAge, nBits, txNew.nTime, nFees, nCredit, prevHash, nBonusMultiplier);
-        if (nReward <= 0)
-            return false;
-
-        nCredit += nReward;
-    }
-
-    // 39otrebla: staking fees/burning staking fees is 10%
-    uint64_t nStakingFees = nReward * STAKING_FEES / COIN;
-
-    // Griffith: new fee structure after FORK_HEIGHT_9
-    if(IsAfterBlock(txNew.nTime, FORK_HEIGHT_9))
-    {
-        if(fMultiSend && fMultiSendCoinStake && vMultiSend.size() > 0) // raised to 20%
-        {
-            nStakingFees = nReward * (STAKING_FEES * 2) / COIN;
-        }
-        else //no fees if not multisendstaking aka using savings
-        {
-            nStakingFees = 0;
         }
     }
 
