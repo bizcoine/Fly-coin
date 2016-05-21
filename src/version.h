@@ -30,10 +30,10 @@ static const int DATABASE_VERSION = 70508;
 // network protocol versioning
 //
 
-static const int PROTOCOL_VERSION = 60090;
+static const int PROTOCOL_VERSION = 60091;
 
 // earlier versions not supported as of Feb 2012, and are disconnected
-static const int MIN_PROTO_VERSION = 60089;
+static const int MIN_PROTO_VERSION = 60091;
 
 // 39otrebla: more min_proto_versions have been (badly) hardcoded in main.cpp:3181 and below
 

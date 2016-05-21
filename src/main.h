@@ -39,7 +39,6 @@ static const int64_t MIN_TX_FEE = 0 * COIN;
 static const int64_t MIN_TX_FEE_V2 = 0 * COIN;
 static const int64_t MIN_RELAY_TX_FEE = MIN_TX_FEE;
 static const int64_t MIN_RELAY_TX_FEE_V2 = MIN_TX_FEE_V2;
-static const int64_t EXCHANGE_FEE = 0.3 * COIN; // 30% fees for transactions which involve non-standard address type (e.g. exchanges)
 static const int64_t MAX_MONEY = 5000000 * COIN;
 static const int64_t MAX_MINT_PROOF_OF_STAKE_1 = 50 * CENT; // 50% per year
 static const int64_t MAX_MINT_PROOF_OF_STAKE_2 = 35 * CENT; // 35% per year
@@ -52,19 +51,8 @@ static const unsigned int FORK_TIME_2 = 1446915600; // Sat, 07 Nov 2015 17:00:00
 static const unsigned int FORK_TIME_3 = 1447278900; // Wednesday, 11 Nov 2015 21:55:00 GMT //keesdewit
 static const unsigned int FORK_TIME_4 = 1448211600; // Sunday, 22 Nov 2015 17:00:00 GMT //keesdewit
 static const unsigned int FORK_TIME_5 = 1450046160; // Sunday, 13 Dec 2015 22:36:00 GMT //keesdewit
-static const int FORK_HEIGHT_6 = 40180;
-static const int FORK_HEIGHT_7 = 43000;
-static const int FORK_HEIGHT_8 = 58000;
 static const int FORK_HEIGHT_9 = 67000;
-
-/// using these values instead of comparing to pindexBest because if there is a rollback for some unknown reason the new blocks wont be subject
-/// to exemption because they wont be in the time frame, although the scenario just described should never happen
-static const unsigned int Exemption_Start = 1456820338;
-static const unsigned int Exemption_End = 1457483446;
-
-static const int64_t STAKING_FEES = 0.1 * COIN;
-static const int64_t TX_FEES_BURNING_RATE = 0.1 * COIN;
-static const int64_t STAKING_FEES_BURNING_RATE = 0 * COIN;
+static const int FORK_HEIGHT_10 = 70000;
 
 inline bool MoneyRange(int64_t nValue) { return (nValue >= 0 && nValue <= MAX_MONEY); }
 // Threshold for nLockTime: below this value it is interpreted as block number, otherwise as UNIX timestamp.
@@ -185,12 +173,6 @@ bool GetTransaction(const uint256& hashTx, CWalletTx& wtx);
 //
 
 int64_t GetMaxMintProofOfStake(unsigned int time);
-std::string GetAdditionalFeeAddress(unsigned int time);
-
-
-
-
-
 
 bool GetWalletFile(CWallet* pwallet, std::string &strWalletFileOut);
 
@@ -640,27 +622,6 @@ public:
         @return	Sum of value of all inputs (scriptSigs)
         @see CTransaction::FetchInputs
      */
-    int64_t GetValueInForAdditionalFee() const; //presstab
-		
-	int64_t GetPaidFee() const; //keesdewit
-	
-	bool IsAdditionalFeeIncluded() const; //presstab
-	
-	bool IsAdditionalFeeIncludedV2() const;
-	
-	
-	
-	int64_t GetAdditionalFee() const //presstab
-	{
-		if(IsCoinStake())
-			return 0;
-		
-		return GetValueInForAdditionalFee() * 10 / 100;
-	}
-		
-	int64_t GetAdditionalFeeV2() const; //keesdewit
-	int64_t GetAdditionalFeeV3() const; //keesdewit
-	
 	
 	int64_t GetValueIn(const MapPrevTx& mapInputs) const;
 

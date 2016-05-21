@@ -12,7 +12,6 @@
 #include "base58.h"
 #include "kernel.h"
 #include "coincontrol.h"
-#include "additionalfee.h"
 
 #include <boost/algorithm/string/replace.hpp>
 #include <boost/range/algorithm.hpp>
@@ -1858,31 +1857,12 @@ bool CWallet::GetStakeWeightFromValue(const int64_t nTime, const int64_t nValue,
 	return true;
 }
 
-bool CWallet::IsSuperFlyAddress(CWalletTx& wtxNew, const CCoinControl* coinControl)
-{
-	set<pair<const CWalletTx*,unsigned int> > setCoins;
-	int64_t nValueIn = 0;
-	
-	if (!SelectCoins(1, wtxNew.nTime, setCoins, nValueIn, coinControl))
-		return false;
-	CTxDestination utxoAddress;
-	BOOST_FOREACH(PAIRTYPE(const CWalletTx*, unsigned int) pcoin, setCoins)
-	{
-		ExtractDestination(pcoin.first->vout[pcoin.second].scriptPubKey, utxoAddress); 
-	}
-	
-    CTxDestination uSuperFlyAddress = CTxDestination(CBitcoinAddress(GetAdditionalFeeAddress(wtxNew.nTime)).Get());
-		
-	return (uSuperFlyAddress == utxoAddress);
-}
+
 
 bool CWallet::CreateTransaction(const vector<pair<CScript, int64_t> >& vecSend, CWalletTx& wtxNew, CReserveKey& reservekey, int64_t& nFeeRet, int nSplitBlock, bool Exchange, const CCoinControl* coinControl)
 {
     int64_t nValue = 0;
-    int64_t nAdditionalFee = 0;
     vector<pair<CScript, int64_t> > nAlterValue;
-
-    bool bIsSuperFlyAddress = IsSuperFlyAddress(wtxNew, coinControl);
 
     if(nSplitBlock < 1 )
         nSplitBlock = 1;
@@ -1895,17 +1875,11 @@ bool CWallet::CreateTransaction(const vector<pair<CScript, int64_t> >& vecSend, 
             if (nValue < 0)
                 return false;
 
-            int64_t nAdditionalFeeForTransaction = bIsSuperFlyAddress ? 0 : AdditionalFee::GetAdditionalFeeFromTable(s.second, Exchange);
-
             CTxDestination outAddress;
             ExtractDestination(s.first, outAddress);
 
-            if (AdditionalFee::IsInFeeExcemptionList(outAddress))
-                nAdditionalFeeForTransaction = 0;
-
-            nValue += s.second - nAdditionalFeeForTransaction;
-            nAlterValue.push_back(make_pair(s.first, (s.second - nAdditionalFeeForTransaction)));
-            nAdditionalFee += nAdditionalFeeForTransaction;
+            nValue += s.second;
+            nAlterValue.push_back(make_pair(s.first, s.second));
         }
     }
     else
@@ -1919,34 +1893,20 @@ bool CWallet::CreateTransaction(const vector<pair<CScript, int64_t> >& vecSend, 
             CTxDestination outAddress;
             ExtractDestination(s.first, outAddress);
 
-            int64_t nAdditionalFeeForTransaction = 0;
-
             for(int nCount = 0; nCount < nSplitBlock; nCount++)
             {
                 if(nCount == nSplitBlock -1)
                 {
                     uint64_t nRemainder = s.second % nSplitBlock;
 
-                    nAdditionalFeeForTransaction = bIsSuperFlyAddress ? 0 : AdditionalFee::GetAdditionalFeeFromTable((s.second / nSplitBlock) + nRemainder, Exchange);
-
-                    if (AdditionalFee::IsInFeeExcemptionList(outAddress))
-                        nAdditionalFeeForTransaction = 0;
-
-                    nValue += (((s.second / nSplitBlock) + nRemainder) - nAdditionalFeeForTransaction);
-                    nAlterValue.push_back(make_pair(s.first, (((s.second / nSplitBlock) + nRemainder) - nAdditionalFeeForTransaction)));
+                    nValue += ((s.second / nSplitBlock) + nRemainder);
+                    nAlterValue.push_back(make_pair(s.first, ((s.second / nSplitBlock) + nRemainder)));
                 }
                 else
                 {
-                    nAdditionalFeeForTransaction = bIsSuperFlyAddress ? 0 : AdditionalFee::GetAdditionalFeeFromTable(s.second / nSplitBlock, Exchange);
-
-                    if (AdditionalFee::IsInFeeExcemptionList(outAddress))
-                        nAdditionalFeeForTransaction = 0;
-
-                    nValue += (s.second / nSplitBlock) - nAdditionalFeeForTransaction;
-                    nAlterValue.push_back(make_pair(s.first, (s.second / nSplitBlock) - nAdditionalFeeForTransaction));
+                    nValue += (s.second / nSplitBlock);
+                    nAlterValue.push_back(make_pair(s.first, s.second / nSplitBlock));
                 }
-
-                nAdditionalFee += nAdditionalFeeForTransaction;
             }
         }
     }
@@ -1968,33 +1928,12 @@ bool CWallet::CreateTransaction(const vector<pair<CScript, int64_t> >& vecSend, 
                 wtxNew.vout.clear();
                 wtxNew.fFromMe = true;
 
-                int64_t nTotalValue = nValue + nAdditionalFee + nFeeRet;
+                int64_t nTotalValue = nValue + nFeeRet;
                 double dPriority = 0;
 
                 // vouts to the payees
                 BOOST_FOREACH (const PAIRTYPE(CScript, int64_t)& s, nAlterValue)
                     wtxNew.vout.push_back(CTxOut(s.second, s.first));
-
-                // 39otrebla: adds vout with Superfly address as recipient
-                // 39otrebla: (partially) burn tx fees
-                if(nAdditionalFee > 0) {
-                    CScript scriptAdditionalFee;
-                    CScript scriptBurnAdditionalFee;
-
-                    scriptAdditionalFee.SetDestination(CTxDestination(CBitcoinAddress(GetAdditionalFeeAddress(wtxNew.nTime)).Get()));
-                    scriptBurnAdditionalFee.SetDestination(CTxDestination(CBitcoinAddress(BURNING_ADDRESS).Get()));
-
-                    int64_t nBurnAdditionalFee = 0;
-
-                    if(pindexBest->nHeight > FORK_HEIGHT_6 && TX_FEES_BURNING_RATE > 0)
-                        nBurnAdditionalFee = nAdditionalFee * TX_FEES_BURNING_RATE / COIN;
-
-                    int64_t nNetAdditionalFee = nAdditionalFee - nBurnAdditionalFee;
-
-                    wtxNew.vout.push_back(CTxOut(nNetAdditionalFee, scriptAdditionalFee));
-                    if(pindexBest->nHeight > FORK_HEIGHT_6 && TX_FEES_BURNING_RATE > 0 && nBurnAdditionalFee > 0)
-                        wtxNew.vout.push_back(CTxOut(nBurnAdditionalFee, scriptBurnAdditionalFee));
-                }
 
                 // Choose coins to use
                 set<pair<const CWalletTx*,unsigned int> > setCoins;
@@ -2008,7 +1947,7 @@ bool CWallet::CreateTransaction(const vector<pair<CScript, int64_t> >& vecSend, 
                     dPriority += (double)nCredit * pcoin.first->GetDepthInMainChain();
                 }
 
-                int64_t nChange = nValueIn - nValue - nAdditionalFee - nFeeRet;
+                int64_t nChange = nValueIn - nValue - nFeeRet;
 
                 if (nChange > 0)
                 {
@@ -2388,45 +2327,6 @@ bool CWallet::CreateCoinStake(const CKeyStore& keystore, unsigned int nBits, int
         nCredit += nReward;
     }
 
-    // 39otrebla: staking fees/burning staking fees is 10%
-    uint64_t nStakingFees = nReward * STAKING_FEES / COIN;
-
-    // Griffith: new fee structure after FORK_HEIGHT_9
-    if(IsAfterBlock(txNew.nTime, FORK_HEIGHT_9))
-    {
-        if(fMultiSend && fMultiSendCoinStake && vMultiSend.size() > 0) // raised to 20%
-        {
-            nStakingFees = nReward * (STAKING_FEES * 2) / COIN;
-        }
-        else //no fees if not multisendstaking aka using savings
-        {
-            nStakingFees = 0;
-        }
-    }
-    /*
-        39otrebla: staking fees/burning staking fees
-        We do need to add 1 or 2 vout depending on whether staking fees have to be (partially) burned
-        or not. Since FLY implements MultSend on staking, the only way to not interferee with it is
-        to always append fees-related vouts at the end.
-    */
-    if(IsAfterBlock(txNew.nTime, FORK_HEIGHT_6))
-    {
-        if(nStakingFees > 0)
-        {
-            // add a vout to SuperFly address for the staking fees
-            CScript scriptSuperFly;
-            scriptSuperFly.SetDestination(CTxDestination(CBitcoinAddress(GetAdditionalFeeAddress(txNew.nTime)).Get()));
-            txNew.vout.push_back(CTxOut(0, scriptSuperFly));
-        }
-
-        // add a vout to (partially) burn staking fees
-        if(STAKING_FEES_BURNING_RATE > 0) {
-            CScript scriptBurnFees;
-            scriptBurnFees.SetDestination(CTxDestination(CBitcoinAddress(BURNING_ADDRESS).Get()));
-            txNew.vout.push_back(CTxOut(0, scriptBurnFees));
-        }
-    }
-
     BOOST_FOREACH(PAIRTYPE(const CWalletTx*, unsigned int) pcoin, setCoins)
     {
         // Attempt to add more inputs
@@ -2458,26 +2358,6 @@ bool CWallet::CreateCoinStake(const CKeyStore& keystore, unsigned int nBits, int
         }
     }
 
-    uint64_t nBurnStakingFees = 0;
-
-    unsigned int feesPosition = txNew.vout.size() - 1;
-    unsigned int burnFeesPosition;
-
-    if(STAKING_FEES_BURNING_RATE > 0)
-    {
-        nBurnStakingFees = nStakingFees * STAKING_FEES_BURNING_RATE / COIN;
-        burnFeesPosition = feesPosition;
-        feesPosition--;
-    }
-
-    // 39otrebla: used if mutilsend is enforced
-    uint64_t nNetReward = nReward - nStakingFees;
-    // 39otrebla: used if multisend is not enforced
-    if(IsAfterBlock(txNew.nTime , FORK_HEIGHT_6))
-    {
-        nCredit += nNetReward - nReward;
-    }
-
     // Set output amount
     if(fMultiSend && fMultiSendCoinStake && vMultiSend.size() > 0)
 	{
@@ -2486,27 +2366,10 @@ bool CWallet::CreateCoinStake(const CKeyStore& keystore, unsigned int nBits, int
 		for(unsigned int i = 0; i < vMultiSend.size(); i++)
 		{
 			int nOut = 2 + i;
-            if(IsAfterBlock(txNew.nTime , FORK_HEIGHT_6))
-                txNew.vout[nOut].nValue = nNetReward * vMultiSend[i].second / 100;
-            else
-                txNew.vout[nOut].nValue = nReward * vMultiSend[i].second / 100;
+            txNew.vout[nOut].nValue = nReward * vMultiSend[i].second / 100;
 			nMultiSendAmount += txNew.vout[nOut].nValue;
 		}
-        txNew.vout[1].nValue = nCredit - nMultiSendAmount - nStakingFees;
-
-        if(IsAfterBlock(txNew.nTime , FORK_HEIGHT_6))
-        {
-            if(nBurnStakingFees > 0 && STAKING_FEES_BURNING_RATE > 0)
-            {
-                // 39otrebla: read wallet.cpp:2270 to understand vout schema
-                txNew.vout[feesPosition].nValue = nStakingFees - nBurnStakingFees;
-                txNew.vout[burnFeesPosition].nValue = nBurnStakingFees;
-            }
-            else if (nStakingFees > 0)
-            {
-                txNew.vout[feesPosition].nValue = nStakingFees;
-            }
-        }
+        txNew.vout[1].nValue = nCredit - nMultiSendAmount;
 	}
     else
     {
@@ -2519,21 +2382,6 @@ bool CWallet::CreateCoinStake(const CKeyStore& keystore, unsigned int nBits, int
         }
         else
             txNew.vout[1].nValue = nCredit;
-
-
-        if(IsAfterBlock(txNew.nTime, FORK_HEIGHT_6))
-        {
-            if(nBurnStakingFees > 0 && STAKING_FEES_BURNING_RATE > 0)
-            {
-                // 39otrebla: read wallet.cpp:2270 to understand vout schema
-                txNew.vout[feesPosition].nValue = nStakingFees - nBurnStakingFees;
-                txNew.vout[burnFeesPosition].nValue = nBurnStakingFees;
-            }
-            else if(nStakingFees > 0)
-            {
-                txNew.vout[feesPosition].nValue = nStakingFees;
-            }
-        }
     }
 
     // Sign

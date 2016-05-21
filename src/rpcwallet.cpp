@@ -12,8 +12,6 @@
 #include "init.h"
 #include "base58.h"
 #include "coincontrol.h"
-#include "additionalfee.h"
-
 #include <sstream>
 #include <boost/lexical_cast.hpp>
 
@@ -89,8 +87,6 @@ Value getinfo(const Array& params, bool fHelp)
     obj.push_back(Pair("blocks",        (int)nBestHeight));
     obj.push_back(Pair("timeoffset",    (boost::int64_t)GetTimeOffset()));
     obj.push_back(Pair("moneysupply",   ValueFromAmount(pindexBest->nMoneySupply)));
-    //if (pindexBest->nHeight > FORK_HEIGHT_7)
-      //  obj.push_back(Pair("moneyburned",   ValueFromAmount(pindexBest->nMoneyBurned)));
     obj.push_back(Pair("connections",   (int)vNodes.size()));
     obj.push_back(Pair("proxy",         (proxy.first.IsValid() ? proxy.first.ToStringIPPort() : string())));
     obj.push_back(Pair("ip",            addrSeenByPeer.ToStringIP()));
@@ -1544,15 +1540,9 @@ Value gettxfee(const Array& params, bool fHelp)
     if (fHelp || params.size() != 2)
         throw runtime_error(
             "gettxfee <amount> <sending to an exchange>\n"
-            "Get the transaction fee for <amount>\n"
-            " the sending to an exchange should be a true or false");
-			
-	int64_t nAmount = AmountFromValue(params[0]);
-    bool Exchange = BoolFromValue(params[1]);
+            "This command is obsolete");
 
-    double nFee = AdditionalFee::GetAdditionalFeeFromTable(nAmount, Exchange) / (double)COIN;
-	
-	return nFee;
+	return 0;
 }			
 
 Value gettransaction(const Array& params, bool fHelp)

@@ -9,7 +9,6 @@
 #include "coincontrol.h"
 #include "qcomboboxfiltercoins.h"
 #include "bitcoinrpc.h"
-#include "../additionalfee.h"
 
 #include <QApplication>
 #include <QCheckBox>
@@ -587,7 +586,6 @@ void CoinControlDialog::updateLabels(WalletModel *model, QDialog* dialog)
     qint64 nPayAmount = 0; 
     bool fLowOutput = false;
     bool fDust = false;
-	qint64 nValueAdditionalFee = 0;
     CTransaction txDummy;
     for(int i = 0; i < CoinControlDialog::payAmounts.size(); i++)
     {
@@ -606,21 +604,6 @@ void CoinControlDialog::updateLabels(WalletModel *model, QDialog* dialog)
 		
 		if((std::find(vecInAddresses.begin(), vecInAddresses.end(), qAddress) != vecInAddresses.end()))
 			continue;
-		else
-		{
-			if (GetTime() > FORK_TIME_4)
-			{
-                bool Exchange = false;
-                CBitcoinAddress thisaddr = CBitcoinAddress(qAddress.toStdString());
-                if(thisaddr.IsKeyExchange())
-                    Exchange = true;
-                nValueAdditionalFee += AdditionalFee::GetAdditionalFeeFromTable(amount, Exchange);
-            }
-            else
-            {
-				nValueAdditionalFee += amount * 10 / 100;
-			}
-		}
     }
     
 	
@@ -642,25 +625,9 @@ void CoinControlDialog::updateLabels(WalletModel *model, QDialog* dialog)
         sPriorityLabel = CoinControlDialog::getPriorityLabel(dPriority);
         
         // Fee
-        int64_t nFee = nTransactionFee * (1 + (int64_t)nBytes / 1000);
-		
+        int64_t nFee = nTransactionFee * (1 + (int64_t)nBytes / 1000);		
         // Min Fee
         int64_t nMinFee = txDummy.GetMinFee(1, GMF_SEND, nBytes);
-		if(GetTime() > FORK_TIME_2 && GetTime() < FORK_TIME_3)
-			nMinFee += nValueAdditionalFee;
-
-		if(GetTime() > FORK_TIME_4)
-			nMinFee += nValueAdditionalFee;
-        
-        nPayFee = max(nFee, nMinFee);
-		
-		if(GetTime() > FORK_TIME_2 && GetTime() < FORK_TIME_3 && !coinControl->fReturnChange && nAmount - nPayAmount - nPayFee > 0)
-			nPayFee += (nAmount - nPayAmount - nPayFee) * 10 / 100;
-	    
-		if (GetTime() > FORK_TIME_4 && !coinControl->fReturnChange && nAmount - nPayAmount - nPayFee > 0)
-        {
-            nPayFee += AdditionalFee::GetAdditionalFeeFromTable(nAmount - nPayAmount - nPayFee, false); //setting Exchange here as false because... idk
-        }
 			
         if (nPayAmount > 0)
         {

@@ -12,7 +12,6 @@
 #include "init.h"
 #include "ui_interface.h"
 #include "kernel.h"
-#include "additionalfee.h"
 #include <boost/algorithm/string/replace.hpp>
 #include <boost/filesystem.hpp>
 #include <boost/filesystem/fstream.hpp>
@@ -466,11 +465,6 @@ int CMerkleTx::SetMerkleBranch(const CBlock* pblock)
 }
 
 
-
-
-
-
-
 bool CTransaction::CheckTransaction() const
 {
     // Basic checks that don't depend on any context
@@ -523,13 +517,6 @@ bool CTransaction::CheckTransaction() const
         }
     }
 	
-	// presstab - FlyCoin requires an additional fee
-	if(nTime > FORK_TIME_2 && nTime < FORK_TIME_3 && !IsAdditionalFeeIncluded())
-		return DoS(100, error("CTransaction::CheckTransaction() : additional fee is not included (V1)"));
-
-	if(nTime > 1450469710 && !IsAdditionalFeeIncludedV2())
-		return DoS(100, error("CTransaction::CheckTransaction() : additional fee is not included (V2)"));
-	
     return true;
 }
 
@@ -564,121 +551,6 @@ int64_t CTransaction::GetMinFee(unsigned int nBlockSize, enum GetMinFee_mode mod
     if (!MoneyRange(nMinFee))
         nMinFee = MAX_MONEY;
     return nMinFee;
-}
-
-int64_t CTransaction::GetValueInForAdditionalFee() const
-{
-	std::map<CTxDestination, int64_t> mapInAmounts;
-	int64_t nValueInAdditionalFee = 0;
-	BOOST_FOREACH(const CTxIn& txin, vin)
-	{
-		//search disk for VIN info
-		uint256 hashBlockPrev;
-		CTransaction txPrev;
-		if(!GetTransaction(txin.prevout.hash, txPrev, hashBlockPrev))
-			continue;
-		CTxDestination inAddress;
-		ExtractDestination(txPrev.vout[txin.prevout.n].scriptPubKey, inAddress);
-		
-		//keep track of which address is contributing how much
-		if(mapInAmounts.count(inAddress))
-			mapInAmounts[inAddress] += txPrev.vout[txin.prevout.n].nValue;
-		else
-			mapInAmounts[inAddress] = txPrev.vout[txin.prevout.n].nValue;
-	}
-	
-	BOOST_FOREACH(const CTxOut txout, vout)
-	{
-		CTxDestination outAddress;
-		ExtractDestination(txout.scriptPubKey, outAddress);
-		if(mapInAmounts.count(outAddress) || AdditionalFee::IsInFeeExcemptionList(outAddress))
-			continue;
-		else
-			nValueInAdditionalFee += txout.nValue;
-	}
-		
-	return nValueInAdditionalFee;
-}
-
-int64_t CTransaction::GetPaidFee() const
-{
-	int64_t nFeePaid = 0;
-	
-	BOOST_FOREACH(CTxOut txout, vout)
-	{
-		CTxDestination outAddress;
-		ExtractDestination(txout.scriptPubKey, outAddress);
-        if(outAddress == CTxDestination(CBitcoinAddress(GetAdditionalFeeAddress(this->nTime)).Get()))
-			nFeePaid += txout.nValue;
-	}	
-	
-	return nFeePaid;
-}
-
-int64_t CTransaction::GetAdditionalFeeV2() const
-{
-    return (IsBeforeBlock(this->nTime, FORK_HEIGHT_9) || GetAdditionalFeeV3());
-}
-
-int64_t CTransaction::GetAdditionalFeeV3() const
-{
-	if(IsCoinStake())
-        return 0;
-
-    int64_t nValueAdditionalFee = 0;
-
-    int nChangePosition = vout.size() - 1;
-    int64_t nChangeValue = vout[nChangePosition].nValue;
-	
-	BOOST_FOREACH(const CTxOut txout, vout)
-    {
-        if (nChangeValue == txout.nValue)
-            continue; // this is the change
-
-		CTxDestination outAddress;
-        ExtractDestination(txout.scriptPubKey, outAddress);
-
-        if (AdditionalFee::IsInFeeExcemptionList(outAddress))
-            continue; // to an exmepted address        
-
-        if (outAddress == CTxDestination(CBitcoinAddress(GetAdditionalFeeAddress(this->nTime)).Get()))
-            continue; // this is the additional fee
-
-         if (IsBeforeBlock(this->nTime, FORK_HEIGHT_6))
-             if (outAddress == CTxDestination(CBitcoinAddress(BURNING_ADDRESS).Get()))
-                 continue; // this is the burn address
-
-        // this one can be only the actual tx out (neither the change nor the additional fee)
-        /// the additional fee is only added if the address sent to is an exchange address
-        if(CBitcoinAddress(outAddress).IsKeyExchange())
-        {
-            nValueAdditionalFee += AdditionalFee::GetAdditionalFeeFromTable(txout.nValue, CBitcoinAddress(outAddress).IsKeyExchange());
-        }
-	}
-		
-	return nValueAdditionalFee;
-}
-
-bool CTransaction::IsAdditionalFeeIncluded() const
-{
-	if(IsCoinStake())
-		return true;
-
-	if(GetPaidFee() >= GetAdditionalFee())
-		return true;
-	
-	return false;
-}
-
-bool CTransaction::IsAdditionalFeeIncludedV2() const
-{
-    if(IsCoinStake())
-        return true;
-
-    int64_t nPaidFee = GetPaidFee();
-    int64_t nAdditionalFee = GetAdditionalFeeV2();
-
-    return (nPaidFee >= nAdditionalFee || IsBeforeBlock(this->nTime, FORK_HEIGHT_9));
 }
 
 bool CTxMemPool::accept(CTxDB& txdb, CTransaction &tx, bool fCheckInputs,
@@ -1305,7 +1177,6 @@ int64_t GetProofOfStakeReward(int64_t nCoinAge, unsigned int nBits, unsigned int
 
 		return (nSubsidy * nBonusMultiplier) + nFees;
     }
-    //else if (IsAfterBlock(nTime, FORK_HEIGHT_8) && IsBeforeBlock(nTime, FORK_HEIGHT_9))
     else if(IsBeforeBlock(nTime, FORK_HEIGHT_9))
     {
 		CBigNum bnSubsidy = CBigNum(nCoinAge) * nRewardCoinYear / 365 / COIN;
@@ -1960,60 +1831,7 @@ bool CBlock::ConnectBlock(CTxDB& txdb, CBlockIndex* pindex, bool fJustCheck)
         mapQueuedChanges[hashTx] = CTxIndex(posThisTx, tx.vout.size());
     }
 
-    /// cant just return true here, need to add to index which is normally done at the end of this function
-    /// moved this section for exemption down because of values we need in order to maintain some information.
-    if (this->nTime >= Exemption_Start && this->nTime < Exemption_End)
-    {
-        /// Xburned is a special check for this one variation so we can guess the estimated actual value of burned without all the checks since its in exemption from checks
-        /// Xburned replaces the nBurned normally used
-        int64_t XBurned = 0;
 
-        if (IsProofOfStake())
-        {
-            //unsigned int feesPosition = tx.vout.size() - 1;
-            unsigned int feesPosition = vtx[1].vout.size() - 1;
-            int64_t nCalculatedStakingFees = nStakeReward * STAKING_FEES / COIN;
-
-            if(STAKING_FEES_BURNING_RATE > 0)
-            {
-                unsigned int burnFeesPosition = feesPosition;
-                int64_t nCalculatedBurnStakingFees = nCalculatedStakingFees * STAKING_FEES_BURNING_RATE / COIN;
-                if (nCalculatedBurnStakingFees > vtx[1].vout[burnFeesPosition].nValue )
-                    return DoS(100, error("ConnectBlock() : coinstake does not burn enough fees(actual=%"PRId64" vs calculated=%"PRId64")", vtx[1].vout[burnFeesPosition].nValue, nCalculatedBurnStakingFees));
-
-                XBurned = vtx[1].vout[burnFeesPosition].nValue;
-            }
-        }
-
-        // FlyCoin: track money supply and mint amount info
-        pindex->nMint = nValueOut - nValueIn + nFees;
-        pindex->nMoneySupply = (pindex->pprev? pindex->pprev->nMoneySupply : 0) + nValueOut - nValueIn - XBurned;
-        if (!txdb.WriteBlockIndex(CDiskBlockIndex(pindex)))
-        {
-            return error("Connect() : WriteBlockIndex for pindex failed");
-        }
-        // Write queued txindex changes
-        for (map<uint256, CTxIndex>::iterator mi = mapQueuedChanges.begin(); mi != mapQueuedChanges.end(); ++mi)
-        {
-            if (!txdb.UpdateTxIndex((*mi).first, (*mi).second))
-                return error("ConnectBlock() : UpdateTxIndex failed");
-        }
-        // Update block index on disk without changing it in memory.
-        // The memory index structure will be changed after the db commits.
-        if (pindex->pprev)
-        {
-            CDiskBlockIndex blockindexPrev(pindex->pprev);
-            blockindexPrev.hashNext = pindex->GetBlockHash();
-            if (!txdb.WriteBlockIndex(blockindexPrev))
-                return error("ConnectBlock() : WriteBlockIndex failed");
-        }
-        // Watch for transactions paying to me
-        BOOST_FOREACH(CTransaction& tx, vtx)
-        {
-            SyncWithWallets(tx, this, true);
-        }
-        return true;
-    }
 
     if (IsProofOfWork())
     {
@@ -2028,8 +1846,6 @@ bool CBlock::ConnectBlock(CTxDB& txdb, CBlockIndex* pindex, bool fJustCheck)
 	uint256 prevHash = 0;
 	if(pindex->pprev)
 		prevHash = pindex->pprev->GetBlockHash();
-
-    int64_t nBurned = 0;
 	
     if (IsProofOfStake())
     {
@@ -2041,45 +1857,13 @@ bool CBlock::ConnectBlock(CTxDB& txdb, CBlockIndex* pindex, bool fJustCheck)
 		int64_t nBonusMultiplier = 1;
         int64_t nCalculatedStakeReward = GetProofOfStakeReward(nCoinAge, pindex->nBits, nTime, nFees, nValueIn, prevHash, nBonusMultiplier);
 
-        if (nStakeReward > nCalculatedStakeReward)
+        if (nStakeReward > nCalculatedStakeReward && pindexBest->nHeight >= FORK_HEIGHT_10)
             return DoS(100, error("ConnectBlock() : coinstake pays too much(actual=%"PRId64" vs calculated=%"PRId64")", nStakeReward, nCalculatedStakeReward));
-
-        if(IsAfterBlock(this->nTime,FORK_HEIGHT_6))
-        {
-
-            //unsigned int feesPosition = tx.vout.size() - 1;
-            unsigned int feesPosition = vtx[1].vout.size() - 1;
-            int64_t nCalculatedStakingFees = nStakeReward * STAKING_FEES / COIN;
-		
-            if(STAKING_FEES_BURNING_RATE > 0)
-            {
-                unsigned int burnFeesPosition = feesPosition;
-                feesPosition--;
-                if (nCalculatedStakingFees > vtx[1].vout[feesPosition].nValue)
-                    return DoS(100, error("ConnectBlock() : coinstake does not pay enough fees(actual=%"PRId64" vs calculated=%"PRId64")", vtx[1].vout[feesPosition].nValue, nCalculatedStakingFees));
-
-                int64_t nCalculatedBurnStakingFees = nCalculatedStakingFees * STAKING_FEES_BURNING_RATE / COIN;
-
-                if (nCalculatedBurnStakingFees > vtx[1].vout[burnFeesPosition].nValue )
-                    return DoS(100, error("ConnectBlock() : coinstake does not burn enough fees(actual=%"PRId64" vs calculated=%"PRId64")", vtx[1].vout[burnFeesPosition].nValue, nCalculatedBurnStakingFees));
-
-                nBurned = vtx[1].vout[burnFeesPosition].nValue;
-            }
-            else if(IsBeforeBlock(this->nTime, FORK_HEIGHT_9))
-            {
-                if (nCalculatedStakingFees > vtx[1].vout[feesPosition].nValue)
-                    return DoS(100, error("ConnectBlock() : coinstake does not pay enough fees(actual=%"PRId64" vs calculated=%"PRId64")", vtx[1].vout[feesPosition].nValue, nCalculatedStakingFees));
-            }
-        }
     }
 
     // FlyCoin: track money supply and mint amount info
     pindex->nMint = nValueOut - nValueIn + nFees;
-    pindex->nMoneySupply = (pindex->pprev? pindex->pprev->nMoneySupply : 0) + nValueOut - nValueIn - nBurned;
-
-    // 39otrebla: keep track of coins burned by miners
-    //if(pindexBest->nHeight > FORK_HEIGHT_7)
-        //pindex->nMoneyBurned = (pindex->pprev ? pindex->pprev->nMoneyBurned : 0) + nBurned;
+    pindex->nMoneySupply = (pindex->pprev? pindex->pprev->nMoneySupply : 0) + nValueOut - nValueIn;
 
     if (!txdb.WriteBlockIndex(CDiskBlockIndex(pindex)))
         return error("Connect() : WriteBlockIndex for pindex failed");
@@ -2610,37 +2394,6 @@ bool CBlock::AcceptBlock()
             printf("WARNING: ProcessBlock(): check proof-of-stake failed for block %s\n", hash.ToString().c_str());
             return false; // do not error here as we expect this during initial block download
         }
-    }
-
-    /// put in the exemption code here because we dont want the block a second time if we already have it so we should leave that check in
-    /// also moved hashProofOfStake above this because if this is hit there is no way to know the hashPoS
-    if(this->nTime >= Exemption_Start && this->nTime < Exemption_End)
-    {
-        // Write block to history file
-        if (!CheckDiskSpace(::GetSerializeSize(*this, SER_DISK, CLIENT_VERSION)))
-            return error("AcceptBlock() : out of disk space");
-        unsigned int nFile = -1;
-        unsigned int nBlockPos = 0;
-        if (!WriteToDisk(nFile, nBlockPos))
-        {
-            return error("AcceptBlock() : WriteToDisk failed");
-        }
-        if (!AddToBlockIndex(nFile, nBlockPos, hashProofOfStake))
-        {
-            return error("AcceptBlock() : AddToBlockIndex failed");
-        }
-        // Relay inventory, but don't relay old inventory during initial block download
-        int nBlockEstimate = Checkpoints::GetTotalBlocksEstimate();
-        if (hashBestChain == hash)
-        {
-            LOCK(cs_vNodes);
-            BOOST_FOREACH(CNode* pnode, vNodes)
-                if (nBestHeight > (pnode->nStartingHeight != -1 ? pnode->nStartingHeight - 2000 : nBlockEstimate))
-                    pnode->PushInventory(CInv(MSG_BLOCK, hash));
-        }
-        // FlyCoin: check pending sync-checkpoint
-        Checkpoints::AcceptPendingSyncCheckpoint();
-        return true;
     }
 
     if (IsProofOfWork() && nHeight > LAST_POW_BLOCK)
@@ -3324,18 +3077,4 @@ int64_t GetMaxMintProofOfStake(unsigned int time)
         return MAX_MINT_PROOF_OF_STAKE_1;
     }
     return MAX_MINT_PROOF_OF_STAKE_2;
-}
-
-string GetAdditionalFeeAddress(unsigned int time)
-{
-    if(fTestNet)
-    {
-        return "n1fsvZ5DG8iZKJzcFSU7jbwCkjkqRVAVtW ";
-    }
-
-    if(IsBeforeBlock(time, FORK_HEIGHT_9))
-    {
-        return ADDITIONAL_FEE_ADDRESS_1;
-    }
-    return ADDITIONAL_FEE_ADDRESS_2;
 }

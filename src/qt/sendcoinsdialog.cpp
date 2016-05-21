@@ -15,7 +15,6 @@
 
 #include "coincontrol.h"
 #include "coincontroldialog.h"
-#include "../additionalfee.h"
 
 #include <QMessageBox>
 #include <QLocale>
@@ -173,21 +172,12 @@ void SendCoinsDialog::on_sendButton_clicked()
 	if (model->getSplitBlock())
 		nSplitBlock = int(ui->splitBlockLineEdit->text().toDouble());
 	
-	int64_t nAdditionalFee = 0;
     // Format confirmation message
     QStringList formatted;
     foreach(const SendCoinsRecipient &rcp, recipients)
     {
         if(!model->getSplitBlock())
 		{
-            if (!AdditionalFee::IsInFeeExcemptionList(CTxDestination(CBitcoinAddress(rcp.address.toUtf8().constData()).Get())))
-			{
-                CBitcoinAddress thisaddr = CBitcoinAddress(rcp.address.toUtf8().constData());
-                bool Exchange = false;
-                if(thisaddr.IsKeyExchange())
-                    Exchange = true;
-                nAdditionalFee += AdditionalFee::GetAdditionalFeeFromTable(rcp.amount, Exchange);
-			}
 			
 		#if QT_VERSION < 0x050000
 		formatted.append(tr("<b>%1</b> to %2 (%3)").arg(BitcoinUnits::formatWithUnit(BitcoinUnits::BTC, rcp.amount), Qt::escape(rcp.label), rcp.address));
@@ -214,18 +204,6 @@ void SendCoinsDialog::on_sendButton_clicked()
 	}
 
     fNewRecipientAllowed = false;
-
-	QMessageBox::StandardButton retval = QMessageBox::question(this, tr("Confirm send coins"),
-                          tr("Are you sure you want to send %1?").arg(formatted.join(tr(" and ")) + "<br/><br/>This will cost " + BitcoinUnits::formatWithUnit(BitcoinUnits::BTC, nAdditionalFee) + " superfly fee. <br/><br/>Do you want to continue"),
-          QMessageBox::Yes|QMessageBox::Cancel,
-          QMessageBox::Cancel);
-
-
-    if(retval != QMessageBox::Yes)
-    {
-        fNewRecipientAllowed = true;
-        return;
-    }
 
     WalletModel::UnlockContext ctx(model->requestUnlock());
     if(!ctx.isValid())
