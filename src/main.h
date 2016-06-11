@@ -42,6 +42,7 @@ static const int64_t MIN_RELAY_TX_FEE_V2 = MIN_TX_FEE_V2;
 static const int64_t MAX_MONEY = 5000000 * COIN;
 static const int64_t MAX_MINT_PROOF_OF_STAKE_1 = 50 * CENT; // 50% per year
 static const int64_t MAX_MINT_PROOF_OF_STAKE_2 = 35 * CENT; // 35% per year
+static const int64_t MAX_MINT_PROOF_OF_STAKE_PARTICIPATION = 350; // 35% per year
 static const int MAX_TIME_SINCE_BEST_BLOCK = 10; // how many seconds to wait before sending next PushGetBlocks()
 static const int MODIFIER_INTERVAL_SWITCH = 100;
 
@@ -53,6 +54,7 @@ static const unsigned int FORK_TIME_4 = 1448211600; // Sunday, 22 Nov 2015 17:00
 static const unsigned int FORK_TIME_5 = 1450046160; // Sunday, 13 Dec 2015 22:36:00 GMT //keesdewit
 static const int FORK_HEIGHT_9 = 67000;
 static const int FORK_HEIGHT_10 = 70000;
+static const int FORK_HEIGHT_11 = 77000;
 
 inline bool MoneyRange(int64_t nValue) { return (nValue >= 0 && nValue <= MAX_MONEY); }
 // Threshold for nLockTime: below this value it is interpreted as block number, otherwise as UNIX timestamp.
@@ -62,9 +64,6 @@ static const int64_t DEF_COMBINE_AMOUNT = 1 * COIN;
 /** Combine Threshold Max */  
 static const int64_t MAX_COMBINE_AMOUNT = 100 * COIN;
 /** Additional Fee Address **/
-static const std::string ADDITIONAL_FEE_ADDRESS_1 = "FUvpVUAnEf9u4JPmVWymhV5o1BEvMQBcyP"; // SuperFly 1 (disabled since FORK_HEIGHT_9)
-static const std::string ADDITIONAL_FEE_ADDRESS_2 = "FPasC37ir9FNX9KsSLsEDvuZrGnFwYdzGF"; // SuperFly 2 (enabled since FORK_HEIGHT_9)
-static const std::string BURNING_ADDRESS = "FLYXXXBURNXXXFLYXXXBURNXXXFLZK33aK"; // keesdewit
 
 
 #ifdef USE_UPNP

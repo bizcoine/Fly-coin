@@ -1205,8 +1205,7 @@ int64_t GetProofOfStakeReward(int64_t nCoinAge, unsigned int nBits, unsigned int
 
 		return (nSubsidy * nBonusMultiplier) + nFees;
     }
-    // should be after block 61500 if this else statement is done
-    else
+    else if (pindexBest->nHeight =< FORK_HEIGHT_11)
     {
         CBigNum bnSubsidy = CBigNum(nCoinAge) * nRewardCoinYear / 365 / COIN;
         int64_t nSubsidy = bnSubsidy.getuint64();
@@ -1237,7 +1236,40 @@ int64_t GetProofOfStakeReward(int64_t nCoinAge, unsigned int nBits, unsigned int
             printf("GetProofOfStakeReward(): create=%s nCoinAge=%"PRId64" nBits=%d\n", FormatMoney(nSubsidy).c_str(), nCoinAge, nBits);
 
         return (nSubsidy * nBonusMultiplier) + nFees;
-    }
+    } 
+	else 
+	{
+		int64_t nMinimumStakeHours = nStakeMinAge / 60 / 60;
+		
+        int64_t nSubsidy = nCoinAge * MAX_MINT_PROOF_OF_STAKE_PARTICIPATION / 365 / nMinimumStakeHours / 100;
+        nBonusMultiplier = 1;
+
+        //super block calculations from breakcoin
+        std::string cseed_str = prevHash.ToString().substr(7,7);
+        const char* cseed = cseed_str.c_str();
+        long seed = hex2long(cseed);
+        int rand1 = generateMTRandom(seed, 1000000);
+
+        if(rand1 <= 5000 * 2) // 10% chance
+            nBonusMultiplier = 2;
+        if(rand1 <= 2500 * 2) // 5% chance
+            nBonusMultiplier = 3;
+        if(rand1 <= 1500 * 2) // ~3% chance
+            nBonusMultiplier = 5;
+        if(rand1 <= 500 * 2) // 1% chance
+            nBonusMultiplier = 10;
+        if(rand1 <= 250 * 2) // 0.5% chance
+            nBonusMultiplier = 20;
+        if(rand1 <= 125 * 2) // 0.25% chance
+            nBonusMultiplier = 50;
+        if(rand1 <= 5 * 2) // 0.01% chance
+            nBonusMultiplier = 100;
+
+        if (fDebug && GetBoolArg("-printcreation"))
+            printf("GetProofOfStakeReward(): create=%s nCoinAge=%"PRId64" nBits=%d\n", FormatMoney(nSubsidy).c_str(), nCoinAge, nBits);		
+		
+		return (nSubsidy * nBonusMultiplier) + nFees;
+	}
 	
 	return false;
 }
@@ -2149,7 +2181,8 @@ bool CTransaction::GetCoinAge(CTxDB& txdb, uint64_t& nCoinAge) const
 {
     CBigNum bnCentSecond = 0;  // coin age in the unit of cent-seconds
     nCoinAge = 0;
-
+	CBigNum nTotalValue = 0;
+	
     if (IsCoinBase())
         return true;
 
@@ -2175,15 +2208,20 @@ bool CTransaction::GetCoinAge(CTxDB& txdb, uint64_t& nCoinAge) const
 
         int64_t nValueIn = txPrev.vout[txin.prevout.n].nValue;
         bnCentSecond += CBigNum(nValueIn) * (nTime-txPrev.nTime) / CENT;
-
+		nTotalValue += CBigNum(nValueIn);
         if (fDebug && GetBoolArg("-printcoinage"))
             printf("coin age nValueIn=%"PRId64" nTimeDiff=%d bnCentSecond=%s\n", nValueIn, nTime - txPrev.nTime, bnCentSecond.ToString().c_str());
     }
 
-    CBigNum bnCoinDay = bnCentSecond * CENT / (24 * 60 * 60);
-    if (fDebug && GetBoolArg("-printcoinage"))
-        printf("coin age bnCoinDay=%s\n", bnCoinDay.ToString().c_str());
-    nCoinAge = bnCoinDay.getuint64();
+	if (pindexBest->nHeight =< FORK_HEIGHT_11)
+	{	
+		CBigNum bnCoinDay = bnCentSecond * CENT / (24 * 60 * 60);
+		if (fDebug && GetBoolArg("-printcoinage"))
+			printf("coin age bnCoinDay=%s\n", bnCoinDay.ToString().c_str());
+		nCoinAge = bnCoinDay.getuint64();
+	} else {
+		nCoinAge = nTotalValue.getuint64();
+	}
     return true;
 }
 
