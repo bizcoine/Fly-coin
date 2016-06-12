@@ -4,8 +4,8 @@
 
 | Specification  | Details |
 | ------------- | ------------- |
-| Protocol  | 50% Proof-of-Stake (PoS)  |
-| Block Time  | 2 minutes |
+| Protocol  | 35% Proof-of-Stake (PoSP / Proof of Stake Participation)  |
+| Block Time  | 5 minutes |
 | Super Blocks |
 | Stake Weight | 7/28 min/max days |
 | RPC Port  | 41569  |
