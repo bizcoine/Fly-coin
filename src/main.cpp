@@ -1241,7 +1241,7 @@ int64_t GetProofOfStakeReward(int64_t nCoinAge, unsigned int nBits, unsigned int
 	{
 		int64_t nMinimumStakeHours = nStakeMinAge / 60 / 60;
 		
-        int64_t nSubsidy = nCoinAge * MAX_MINT_PROOF_OF_STAKE_PARTICIPATION / 365 / nMinimumStakeHours / 100;
+        int64_t nSubsidy = nCoinAge * MAX_MINT_PROOF_OF_STAKE_PARTICIPATION / 365 / nMinimumStakeHours;
         nBonusMultiplier = 1;
 
         //super block calculations from breakcoin
